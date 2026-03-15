@@ -1,98 +1,166 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useApp } from '@/src/context/AppContext';
+import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
+import { CrimsonCalendar } from '@/src/components/CrimsonCalendar';
+import { LogPeriodModal } from '@/src/components/LogPeriodModal';
+import { RemovePeriodModal } from '@/src/components/RemovePeriodModal';
+import { PmsAdjustModal } from '@/src/components/PmsAdjustModal';
+import { OverlayToggles } from '@/src/components/OverlayToggles';
+import { parseDate, addDays, toDateOnly } from '@/src/utils/date';
+import { PeriodLog } from '@/src/types';
+import { Colors } from '@/constants/theme';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+function getLogContainingDate(logs: PeriodLog[], date: string): PeriodLog | null {
+  const d = parseDate(date);
+  for (const log of logs) {
+    const start = parseDate(log.startDate);
+    const end = addDays(start, log.periodLengthDays - 1);
+    if (d >= start && d <= end) return log;
+  }
+  return null;
+}
 
-export default function HomeScreen() {
+export default function CalendarScreen() {
+  const isDark = (useColorScheme() ?? 'light') === 'dark';
+  const bgColor = isDark ? Colors.dark.background : Colors.light.background;
+
+  const {
+    partners,
+    periodLogs,
+    activePartnerId,
+    showPms,
+    showFertility,
+    showOvulation,
+    addPeriodLog,
+    forceAddPeriodLog,
+    removePeriodLog,
+    updatePeriodLog,
+    updatePartner,
+    togglePms,
+    toggleFertility,
+    toggleOvulation,
+  } = useApp();
+
+  const [logModalDate, setLogModalDate] = useState<string | null>(null);
+  const [editLog, setEditLog] = useState<PeriodLog | null>(null);
+  const [showPmsModal, setShowPmsModal] = useState(false);
+
+  const activePartner = useMemo(
+    () => partners.find((p) => p.id === activePartnerId) ?? null,
+    [partners, activePartnerId],
+  );
+
+  const pmsDays = activePartner?.pmsDays ?? 7;
+
+  const predictions = useMemo(
+    () =>
+      activePartnerId
+        ? buildPredictedCalendar(periodLogs, activePartnerId, showPms, showFertility, showOvulation, pmsDays)
+        : {},
+    [periodLogs, activePartnerId, showPms, showFertility, showOvulation, pmsDays],
+  );
+
+  const partnerLogs = useMemo(
+    () => (activePartnerId ? periodLogs.filter((l) => l.partnerId === activePartnerId) : []),
+    [periodLogs, activePartnerId],
+  );
+
+  const maxLoggable = useMemo(() => toDateOnly(addDays(new Date(), 7)), []);
+
+  const handleDayPress = useCallback(
+    (date: string) => {
+      const log = getLogContainingDate(periodLogs, date);
+      if (log) {
+        setEditLog(log);
+        return;
+      }
+      const prediction = predictions[date];
+      if (prediction?.isPMS) {
+        setShowPmsModal(true);
+        return;
+      }
+      if (date > maxLoggable) return;
+      setLogModalDate(date);
+    },
+    [periodLogs, predictions, maxLoggable],
+  );
+
+  const handleLogConfirm = useCallback(
+    (date: string, days: number) => {
+      if (!activePartnerId) return { ok: false as const, reason: 'No partner selected.' };
+      return addPeriodLog(activePartnerId, date, days);
+    },
+    [activePartnerId, addPeriodLog],
+  );
+
+  const handleForceReplace = useCallback(
+    (date: string, days: number, replaceLogId: string) => {
+      if (!activePartnerId) return;
+      forceAddPeriodLog(activePartnerId, date, days, replaceLogId);
+    },
+    [activePartnerId, forceAddPeriodLog],
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <View style={styles.calendarWrap}>
+        <CrimsonCalendar
+          predictions={predictions}
+          logs={partnerLogs}
+          onDayPress={handleDayPress}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <OverlayToggles
+        showPms={showPms}
+        showFertility={showFertility}
+        showOvulation={showOvulation}
+        onTogglePms={togglePms}
+        onToggleFertility={toggleFertility}
+        onToggleOvulation={toggleOvulation}
+      />
+
+      {logModalDate != null && (
+        <LogPeriodModal
+          date={logModalDate}
+          onConfirm={handleLogConfirm}
+          onForceReplace={handleForceReplace}
+          onDismiss={() => setLogModalDate(null)}
+        />
+      )}
+
+      {editLog != null && (
+        <RemovePeriodModal
+          log={editLog}
+          onSave={(days) => {
+            updatePeriodLog(editLog.id, days);
+            setEditLog(null);
+          }}
+          onRemove={() => {
+            removePeriodLog(editLog.id);
+            setEditLog(null);
+          }}
+          onDismiss={() => setEditLog(null)}
+        />
+      )}
+
+      {showPmsModal && activePartner && (
+        <PmsAdjustModal
+          currentDays={activePartner.pmsDays ?? 7}
+          onSave={(days) => {
+            updatePartner({ ...activePartner, pmsDays: days });
+            setShowPmsModal(false);
+          }}
+          onDismiss={() => setShowPmsModal(false)}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, paddingTop: 50 },
+  calendarWrap: { flex: 1 },
 });

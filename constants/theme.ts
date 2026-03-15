@@ -1,29 +1,55 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
+const primaryCrimson = '#9B2226';
+const tintColorLight = primaryCrimson;
 const tintColorDark = '#fff';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#141318',
+    background: '#FCFAF8',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#F5F5F7',
+    background: '#181716',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+  },
+};
+
+export const CrimsonColors = {
+  primary: primaryCrimson,
+  period: primaryCrimson,
+  periodSubtle: '#E6C0C1',
+  pms: '#FAE0AD',
+  pmsSubtle: '#FDF2DA',
+  fertile: '#A7EBED',
+  fertileSubtle: '#DDF7F8',
+  ovulation: '#77C3C5',
+  ovulationSubtle: '#B8E1E2',
+  periodSubtleDark: '#4A1E20',
+  pmsSubtleDark: '#3D3222',
+  fertileSubtleDark: '#1A3A3B',
+  ovulationSubtleDark: '#2E504E',
+  dark: {
+    surface: '#1F1E1D',
+    surfaceElevated: '#272625',
+    border: '#3A3937',
+    textSecondary: '#9BA1A6',
+    textTertiary: '#6b6f76',
+  },
+  light: {
+    surface: '#f5f5f7',
+    surfaceElevated: '#ffffff',
+    border: '#e5e5e7',
+    textSecondary: '#6b6f76',
+    textTertiary: '#9BA1A6',
   },
 };
 
