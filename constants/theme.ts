@@ -1,67 +1,55 @@
 import { Platform } from 'react-native';
 
 const primaryCrimson = '#9B2226';
-const tintColorLight = primaryCrimson;
-const tintColorDark = '#fff';
 
 export const Colors = {
-  light: {
-    text: '#141318',
-    background: '#FCFAF8',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
   dark: {
     text: '#F5F5F7',
-    background: '#181716',
-    tint: tintColorDark,
+    background: '#000000',
+    tint: '#FFFFFF',
     icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconDefault: '#6b6f76',
+    tabIconSelected: '#FFFFFF',
   },
 };
 
 export const CrimsonColors = {
   primary: primaryCrimson,
-  period: primaryCrimson,
-  periodSubtle: '#E6C0C1',
-  pms: '#FAE0AD',
-  pmsSubtle: '#FDF2DA',
-  fertile: '#A7EBED',
-  fertileSubtle: '#DDF7F8',
-  ovulation: '#77C3C5',
-  ovulationSubtle: '#B8E1E2',
-  periodSubtleDark: '#4A1E20',
-  pmsSubtleDark: '#3D3222',
-  fertileSubtleDark: '#1A3A3B',
-  ovulationSubtleDark: '#2E504E',
-  dark: {
-    surface: '#1F1E1D',
-    surfaceElevated: '#272625',
-    border: '#3A3937',
-    textSecondary: '#9BA1A6',
-    textTertiary: '#6b6f76',
-  },
-  light: {
-    surface: '#f5f5f7',
-    surfaceElevated: '#ffffff',
-    border: '#e5e5e7',
-    textSecondary: '#6b6f76',
-    textTertiary: '#9BA1A6',
+
+  period: '#E85A5F',
+  periodGlow: 'rgba(232,90,95,0.45)',
+  periodGlowCenter: 'rgba(232,90,95,0.7)',
+  periodSolid: 'rgba(232,90,95,0.75)',
+
+  pms: '#702887',
+  pmsGlow: 'rgba(112,40,135,0.35)',
+  pmsGlowCenter: 'rgba(112,40,135,0.6)',
+  pmsSolid: 'rgba(112,40,135,0.7)',
+
+  fertile: '#2DEDF1',
+  fertileGlow: 'rgba(45,237,241,0.35)',
+  fertileGlowCenter: 'rgba(45,237,241,0.65)',
+  fertileSolid: 'rgba(45,237,241,0.6)',
+
+  ovulation: '#005AFF',
+  ovulationGlow: 'rgba(0,90,255,0.4)',
+  ovulationGlowCenter: 'rgba(0,90,255,0.7)',
+  ovulationSolid: 'rgba(0,90,255,0.7)',
+
+  glass: {
+    surface: 'rgba(0,0,0,0.35)',
+    surfaceElevated: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.08)',
+    textSecondary: 'rgba(255,255,255,0.6)',
+    textTertiary: 'rgba(255,255,255,0.4)',
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

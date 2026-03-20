@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { PredictedDayState, PeriodLog } from '@/src/types';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, CrimsonColors } from '@/constants/theme';
+import { CrimsonColors } from '@/constants/theme';
 import { addMonths, toDateOnly, parseDate, addDays } from '@/src/utils/date';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -21,7 +21,14 @@ const FUTURE_MONTHS = 12;
 const MONTH_HEADER_HEIGHT = 44;
 const WEEK_LABEL_HEIGHT = 24;
 const ROW_HEIGHT = DAY_SIZE + 8;
+
+// Solid circle for today
+const CIRCLE_SIZE = DAY_SIZE - 8;
+// SVG glow slightly larger than cell so it bleeds softly into neighbors
+const GLOW_SIZE = Math.round(DAY_SIZE * 1.35);
+
 type MonthData = { key: string; year: number; month: number };
+type PhaseInfo = { color: string; solid: string } | null;
 
 type Props = {
   predictions: Record<string, PredictedDayState>;
@@ -29,193 +36,146 @@ type Props = {
   onDayPress: (date: string) => void;
 };
 
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
+function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
+function getFirstDayOffset(y: number, m: number) {
+  const d = new Date(y, m, 1).getDay();
+  return d === 0 ? 6 : d - 1;
 }
-
-function getFirstDayOffset(year: number, month: number): number {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1;
+function weekRowsForMonth(y: number, m: number) {
+  return Math.ceil((getDaysInMonth(y, m) + getFirstDayOffset(y, m)) / 7);
 }
-
-function weekRowsForMonth(year: number, month: number): number {
-  const days = getDaysInMonth(year, month);
-  const offset = getFirstDayOffset(year, month);
-  return Math.ceil((days + offset) / 7);
-}
-
-function isLoggedPeriodDay(date: string, logs: PeriodLog[]): boolean {
+function isLoggedDay(date: string, logs: PeriodLog[]) {
   const d = parseDate(date);
-  for (const log of logs) {
-    const start = parseDate(log.startDate);
-    const end = addDays(start, log.periodLengthDays - 1);
-    if (d >= start && d <= end) return true;
-  }
-  return false;
+  return logs.some((l) => {
+    const s = parseDate(l.startDate);
+    return d >= s && d <= addDays(s, l.periodLengthDays - 1);
+  });
 }
-
-function bgColorForDay(
-  isPeriod: boolean,
-  isLogged: boolean,
-  isPMS: boolean,
-  isOvulation: boolean,
-  isFertile: boolean,
-  isDark: boolean,
-): string | undefined {
-  if (isLogged) return CrimsonColors.period;
-  if (isPeriod) return isDark ? CrimsonColors.periodSubtleDark : CrimsonColors.periodSubtle;
-  if (isOvulation) return isDark ? CrimsonColors.ovulationSubtleDark : CrimsonColors.ovulationSubtle;
-  if (isFertile) return isDark ? CrimsonColors.fertileSubtleDark : CrimsonColors.fertileSubtle;
-  if (isPMS) return isDark ? CrimsonColors.pmsSubtleDark : CrimsonColors.pmsSubtle;
-  return undefined;
-}
-
-function textColorForDay(
-  isLogged: boolean,
-  isDark: boolean,
-): string {
-  if (isLogged) return '#FFFFFF';
-  return isDark ? '#E0E0E0' : '#3A3A3C';
-}
-
 function generateMonths(): MonthData[] {
-  const months: MonthData[] = [];
-  const now = new Date();
-  for (let i = -PAST_MONTHS; i <= FUTURE_MONTHS; i++) {
-    const d = addMonths(now, i);
-    months.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      year: d.getFullYear(),
-      month: d.getMonth(),
-    });
-  }
-  return months;
+  return Array.from({ length: PAST_MONTHS + FUTURE_MONTHS + 1 }, (_, i) => {
+    const d = addMonths(new Date(), i - PAST_MONTHS);
+    return { key: `${d.getFullYear()}-${d.getMonth()}`, year: d.getFullYear(), month: d.getMonth() };
+  });
+}
+function getPhase(isPeriod: boolean, isLogged: boolean, isPMS: boolean, isOv: boolean, isFert: boolean): PhaseInfo {
+  if (isLogged || isPeriod) return { color: CrimsonColors.period,    solid: CrimsonColors.periodSolid };
+  if (isOv)                  return { color: CrimsonColors.ovulation, solid: CrimsonColors.ovulationSolid };
+  if (isFert)                return { color: CrimsonColors.fertile,   solid: CrimsonColors.fertileSolid };
+  if (isPMS)                 return { color: CrimsonColors.pms,       solid: CrimsonColors.pmsSolid };
+  return null;
 }
 
-export function CrimsonCalendar({
-  predictions,
-  logs,
-  onDayPress,
-}: Props) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const isDark = colorScheme === 'dark';
-  const months = useMemo(() => generateMonths(), []);
+// Offset to center a GLOW_SIZE element inside a DAY_SIZE cell
+const glowLeft = (DAY_SIZE - GLOW_SIZE) / 2;
+const glowTop  = (ROW_HEIGHT - GLOW_SIZE) / 2;
+
+export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
+  const months  = useMemo(generateMonths, []);
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
 
-  const monthHeights = useMemo(() => {
-    return months.map((m) => {
-      const rows = weekRowsForMonth(m.year, m.month);
-      return MONTH_HEADER_HEIGHT + WEEK_LABEL_HEIGHT + rows * ROW_HEIGHT + 8;
-    });
-  }, [months]);
+  const monthHeights = useMemo(() =>
+    months.map((m) => MONTH_HEADER_HEIGHT + WEEK_LABEL_HEIGHT + weekRowsForMonth(m.year, m.month) * ROW_HEIGHT + 8),
+  [months]);
 
-  const getItemLayout = useCallback(
-    (_: unknown, index: number) => {
-      let offset = 0;
-      for (let i = 0; i < index; i++) offset += monthHeights[i];
-      return { length: monthHeights[index], offset, index };
-    },
-    [monthHeights],
-  );
+  const getItemLayout = useCallback((_: unknown, i: number) => {
+    let offset = 0;
+    for (let j = 0; j < i; j++) offset += monthHeights[j];
+    return { length: monthHeights[i], offset, index: i };
+  }, [monthHeights]);
 
-  const textColor = isDark ? Colors.dark.text : Colors.light.text;
-  const dimText = isDark ? CrimsonColors.dark.textTertiary : CrimsonColors.light.textTertiary;
-  const headerBg = isDark ? CrimsonColors.dark.surface : CrimsonColors.light.surface;
+  const renderMonth = useCallback(({ item }: { item: MonthData }) => {
+    const { year, month } = item;
+    const total  = getDaysInMonth(year, month);
+    const offset = getFirstDayOffset(year, month);
+    const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const renderMonth = useCallback(
-    ({ item }: { item: MonthData }) => {
-      const { year, month } = item;
-      const daysInMonth = getDaysInMonth(year, month);
-      const offset = getFirstDayOffset(year, month);
-      const monthName = new Date(year, month).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
+    const cells: React.ReactNode[] = Array.from({ length: offset }, (_, i) => (
+      <View key={`e-${i}`} style={styles.dayCell} />
+    ));
 
-      const cells: React.ReactNode[] = [];
-      for (let i = 0; i < offset; i++) {
-        cells.push(<View key={`e-${i}`} style={styles.dayCell} />);
-      }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const prediction = predictions[dateStr];
-        const isToday = dateStr === todayStr;
-        const isLogged = isLoggedPeriodDay(dateStr, logs);
-
-        const isPeriod = prediction?.isPeriod ?? false;
-        const isPMS = prediction?.isPMS ?? false;
-        const isFertile = prediction?.isFertileWindow ?? false;
-        const isOvulation = prediction?.isOvulationDay ?? false;
-
-        const bg = bgColorForDay(isPeriod, isLogged, isPMS, isOvulation, isFertile, isDark);
-        const dayTextColor = textColorForDay(isLogged, isDark);
-        const hasSolidBg = isLogged;
-
-        cells.push(
-          <TouchableOpacity
-            key={dateStr}
-            style={styles.dayCell}
-            onPress={() => onDayPress(dateStr)}
-            activeOpacity={0.6}
-          >
-            <View
-              style={[
-                styles.dayCircle,
-                bg != null && { backgroundColor: bg },
-                isToday && !hasSolidBg && {
-                  borderWidth: 2,
-                  borderColor: isDark ? '#F5F5F7' : '#141318',
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  { color: dayTextColor },
-                  isToday && !hasSolidBg && { fontWeight: '700' },
-                ]}
-              >
-                {day}
-              </Text>
-            </View>
-          </TouchableOpacity>,
-        );
-      }
-
-      return (
-        <View style={styles.monthContainer}>
-          <View style={[styles.monthHeader, { backgroundColor: headerBg }]}>
-            <Text style={[styles.monthTitle, { color: textColor }]}>{monthName}</Text>
-          </View>
-          <View style={styles.weekDayRow}>
-            {WEEK_DAYS.map((d) => (
-              <View key={d} style={styles.weekDayCell}>
-                <Text style={[styles.weekDayText, { color: dimText }]}>{d}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.daysGrid}>{cells}</View>
-        </View>
+    for (let day = 1; day <= total; day++) {
+      const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const pred = predictions[ds];
+      const isToday  = ds === todayStr;
+      const isLogged = isLoggedDay(ds, logs);
+      const phase = getPhase(
+        pred?.isPeriod ?? false, isLogged,
+        pred?.isPMS ?? false, pred?.isOvulationDay ?? false, pred?.isFertileWindow ?? false,
       );
-    },
-    [
-      predictions,
-      logs,
-      todayStr,
-      textColor,
-      dimText,
-      headerBg,
-      isDark,
-      onDayPress,
-    ],
-  );
+
+      cells.push(
+        <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.7}>
+
+          {/* ── Today + phase: solid opaque circle ── */}
+          {phase && isToday ? (
+            <View style={[styles.solidCircle, {
+              backgroundColor: phase.solid,
+              shadowColor: phase.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1,
+              shadowRadius: 18,
+            }]}>
+              <Text style={styles.textBright}>{day}</Text>
+            </View>
+
+          /* ── Phase day: large SVG radial glow ── */
+          ) : phase ? (
+            <View style={styles.glowCell}>
+              {/* SVG is larger than the cell, centered with negative offset */}
+              <Svg
+                width={GLOW_SIZE}
+                height={GLOW_SIZE}
+                style={{ position: 'absolute', left: glowLeft, top: glowTop }}
+              >
+                <Defs>
+                  <RadialGradient id={`g${ds}`} cx="50%" cy="50%" r="50%">
+                    <Stop offset="0%"   stopColor={phase.color} stopOpacity="0.85" />
+                    <Stop offset="45%"  stopColor={phase.color} stopOpacity="0.45" />
+                    <Stop offset="75%"  stopColor={phase.color} stopOpacity="0.12" />
+                    <Stop offset="100%" stopColor={phase.color} stopOpacity="0" />
+                  </RadialGradient>
+                </Defs>
+                <Circle cx={GLOW_SIZE / 2} cy={GLOW_SIZE / 2} r={GLOW_SIZE / 2} fill={`url(#g${ds})`} />
+              </Svg>
+              <Text style={styles.textBright}>{day}</Text>
+            </View>
+
+          /* ── Today, no phase: white ring ── */
+          ) : isToday ? (
+            <View style={styles.todayRing}>
+              <Text style={styles.textBright}>{day}</Text>
+            </View>
+
+          /* ── Normal day ── */
+          ) : (
+            <Text style={styles.textNormal}>{day}</Text>
+          )}
+        </TouchableOpacity>,
+      );
+    }
+
+    return (
+      <View style={styles.monthContainer}>
+        <View style={styles.monthHeader}>
+          <Text style={styles.monthTitle}>{monthName}</Text>
+        </View>
+        <View style={styles.weekRow}>
+          {WEEK_DAYS.map((d) => (
+            <View key={d} style={styles.weekCell}>
+              <Text style={styles.weekText}>{d}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.grid}>{cells}</View>
+      </View>
+    );
+  }, [predictions, logs, todayStr, onDayPress]);
 
   return (
     <FlatList
       data={months}
       renderItem={renderMonth}
-      keyExtractor={(item) => item.key}
+      keyExtractor={(m) => m.key}
       getItemLayout={getItemLayout}
       initialScrollIndex={PAST_MONTHS}
       showsVerticalScrollIndicator={false}
@@ -226,41 +186,49 @@ export function CrimsonCalendar({
 
 const styles = StyleSheet.create({
   listContent: { paddingBottom: 20 },
-  monthContainer: { marginBottom: 8 },
-  monthHeader: {
-    paddingHorizontal: CALENDAR_PADDING,
-    height: MONTH_HEADER_HEIGHT,
-    justifyContent: 'center',
-  },
-  monthTitle: { fontSize: 18, fontWeight: '700' },
-  weekDayRow: {
+  monthContainer: { marginBottom: 8, overflow: 'visible' },
+  monthHeader: { paddingHorizontal: CALENDAR_PADDING, height: MONTH_HEADER_HEIGHT, justifyContent: 'center' },
+  monthTitle: { fontSize: 18, fontWeight: '700', color: '#F5F5F7' },
+  weekRow: { flexDirection: 'row', paddingHorizontal: CALENDAR_PADDING, height: WEEK_LABEL_HEIGHT },
+  weekCell: { width: DAY_SIZE, alignItems: 'center', justifyContent: 'center' },
+  weekText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: CALENDAR_PADDING,
-    height: WEEK_LABEL_HEIGHT,
-  },
-  weekDayCell: {
-    width: DAY_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'visible',
   },
   dayCell: {
     width: DAY_SIZE,
     height: ROW_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
   },
-  dayCircle: {
-    width: DAY_SIZE - 8,
-    height: DAY_SIZE - 8,
-    borderRadius: (DAY_SIZE - 8) / 2,
+  // Phase glow cell — same size as dayCell, overflow visible
+  glowCell: {
+    width: DAY_SIZE,
+    height: ROW_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  solidCircle: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayText: { fontSize: 15, fontWeight: '500' },
-  weekDayText: { fontSize: 12, fontWeight: '600' },
-  daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: CALENDAR_PADDING,
+  todayRing: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  textNormal: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.7)' },
+  textBright: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

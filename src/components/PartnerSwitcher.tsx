@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Partner } from '@/src/types';
-import { CrimsonColors } from '@/constants/theme';
 import { getIconComponent } from '@/src/constants/partnerIcons';
 
 type Props = {
@@ -33,7 +32,6 @@ export function PartnerSwitcher({ partners, activeId, onSelect, onAdd }: Props) 
                 weight="fill"
               />
             ) : p.icon ? (
-              // Legacy emoji fallback
               <Text style={isActive ? styles.emojiActive : styles.emoji}>
                 {p.icon}
               </Text>
@@ -50,7 +48,7 @@ export function PartnerSwitcher({ partners, activeId, onSelect, onAdd }: Props) 
         );
       })}
       <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
-        <Text style={[styles.addText, { color: CrimsonColors.primary }]}>+</Text>
+        <Text style={styles.addText}>+</Text>
       </TouchableOpacity>
     </View>
   );
@@ -97,7 +95,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: CrimsonColors.primary,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  addText: { fontSize: 18, fontWeight: '600', marginTop: -1 },
+  addText: { fontSize: 18, fontWeight: '600', marginTop: -1, color: 'rgba(255,255,255,0.5)' },
 });

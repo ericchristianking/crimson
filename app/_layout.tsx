@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -25,33 +24,13 @@ function AppGate() {
   }
 
   return (
-    <>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="partner-form"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-      </Stack>
-    </>
-  );
-}
-
-function ThemeGate() {
-  const { themeMode } = useApp();
-  const systemScheme = useSystemColorScheme();
-
-  const resolvedScheme =
-    themeMode === 'system' ? (systemScheme ?? 'light') : themeMode;
-  const isDark = resolvedScheme === 'dark';
-
-  return (
-    <ThemeSchemeProvider value={resolvedScheme}>
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        <AppGate />
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-      </ThemeProvider>
-    </ThemeSchemeProvider>
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="partner-form"
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+    </Stack>
   );
 }
 
@@ -59,7 +38,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProvider>
-        <ThemeGate />
+        <ThemeSchemeProvider value="dark">
+          <ThemeProvider value={DarkTheme}>
+            <AppGate />
+            <StatusBar style="light" />
+          </ThemeProvider>
+        </ThemeSchemeProvider>
       </AppProvider>
     </GestureHandlerRootView>
   );

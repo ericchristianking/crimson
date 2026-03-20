@@ -10,13 +10,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useApp } from '@/src/context/AppContext';
-import { Colors, CrimsonColors } from '@/constants/theme';
+import { CrimsonColors } from '@/constants/theme';
 import { PARTNER_ICONS, getIconComponent } from '@/src/constants/partnerIcons';
 
 const PRESET_COLORS = ['#FF46FD', '#E92D35', '#FF7529', '#FFDC39', '#2DEDF1', '#6D46FF'];
-const DEFAULT_ICON_COLOR = '#3A3A3C';
+const DEFAULT_ICON_COLOR = '#AAAAAA';
 
 type DisplayChoice = 'color' | 'icon';
 
@@ -24,16 +23,8 @@ export default function PartnerFormScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const { partners, addPartner, updatePartner } = useApp();
-  const isDark = (useColorScheme() ?? 'light') === 'dark';
-
-  const bgColor = isDark ? Colors.dark.background : Colors.light.background;
-  const textColor = isDark ? Colors.dark.text : Colors.light.text;
-  const inputBg = isDark ? CrimsonColors.dark.surface : CrimsonColors.light.surface;
-  const dimColor = isDark ? '#9BA1A6' : '#6b6f76';
-  const borderColor = isDark ? CrimsonColors.dark.border : CrimsonColors.light.border;
 
   const existing = params.id ? partners.find((p) => p.id === params.id) : null;
-
   const existingUsesIcon = existing?.icon ? !!getIconComponent(existing.icon) : false;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -70,58 +61,48 @@ export default function PartnerFormScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: bgColor }]}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
-        <Text style={[styles.closeText, { color: dimColor }]}>✕</Text>
+        <Text style={styles.closeText}>✕</Text>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.heading, { color: textColor }]}>
+        <Text style={styles.heading}>
           {existing ? 'Edit Partner' : 'Add Partner'}
         </Text>
 
-        <Text style={[styles.label, { color: dimColor }]}>Name</Text>
-        <Text style={[styles.hint, { color: dimColor }]}>
-          Private — never shown on the calendar
-        </Text>
+        <Text style={styles.label}>Name</Text>
+        <Text style={styles.hint}>Private — never shown on the calendar</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
+          style={styles.input}
           value={name}
           onChangeText={setName}
           placeholder="Partner's name"
-          placeholderTextColor={dimColor}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           autoCapitalize="words"
         />
 
-        <Text style={[styles.label, { color: dimColor }]}>Calendar display</Text>
-        <Text style={[styles.hint, { color: dimColor }]}>
+        <Text style={styles.label}>Calendar display</Text>
+        <Text style={styles.hint}>
           Choose a color or an icon — this is how they appear on the calendar
         </Text>
 
-        <View style={[styles.tabRow, { backgroundColor: inputBg }]}>
+        <View style={styles.tabRow}>
           <TouchableOpacity
-            style={[
-              styles.tab,
-              displayChoice === 'color' && styles.tabActive,
-              displayChoice === 'color' && { backgroundColor: bgColor },
-            ]}
+            style={[styles.tab, displayChoice === 'color' && styles.tabActive]}
             onPress={() => setDisplayChoice('color')}
           >
-            <Text style={[styles.tabText, { color: displayChoice === 'color' ? textColor : dimColor }]}>
+            <Text style={[styles.tabText, displayChoice === 'color' && styles.tabTextActive]}>
               Color
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.tab,
-              displayChoice === 'icon' && styles.tabActive,
-              displayChoice === 'icon' && { backgroundColor: bgColor },
-            ]}
+            style={[styles.tab, displayChoice === 'icon' && styles.tabActive]}
             onPress={() => setDisplayChoice('icon')}
           >
-            <Text style={[styles.tabText, { color: displayChoice === 'icon' ? textColor : dimColor }]}>
+            <Text style={[styles.tabText, displayChoice === 'icon' && styles.tabTextActive]}>
               Icon
             </Text>
           </TouchableOpacity>
@@ -152,14 +133,13 @@ export default function PartnerFormScreen() {
                     key={entry.key}
                     style={[
                       styles.iconBtn,
-                      { borderColor: isSelected ? CrimsonColors.primary : borderColor },
                       isSelected && styles.iconBtnActive,
                     ]}
                     onPress={() => setIconKey(entry.key)}
                   >
                     <Icon
                       size={24}
-                      color={isSelected ? iconColor : dimColor}
+                      color={isSelected ? iconColor : 'rgba(255,255,255,0.3)'}
                       weight={isSelected ? 'fill' : 'regular'}
                     />
                   </TouchableOpacity>
@@ -167,9 +147,7 @@ export default function PartnerFormScreen() {
               })}
             </View>
 
-            <Text style={[styles.label, { color: dimColor, marginTop: 12 }]}>
-              Icon color (optional)
-            </Text>
+            <Text style={[styles.label, { marginTop: 12 }]}>Icon color (optional)</Text>
             <View style={styles.tintRow}>
               <TouchableOpacity
                 style={[
@@ -195,7 +173,7 @@ export default function PartnerFormScreen() {
         )}
 
         <View style={styles.previewRow}>
-          <Text style={[styles.previewLabel, { color: dimColor }]}>Preview:</Text>
+          <Text style={styles.previewLabel}>Preview:</Text>
           {displayChoice === 'color' ? (
             <View style={[styles.previewDot, { backgroundColor: color }]} />
           ) : (
@@ -220,7 +198,12 @@ export default function PartnerFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 24 },
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    backgroundColor: '#0A0A0A',
+  },
   closeBtn: {
     position: 'absolute',
     top: 58,
@@ -232,20 +215,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { fontSize: 22, fontWeight: '600' },
+  closeText: { fontSize: 22, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   form: { gap: 16, paddingBottom: 40 },
-  heading: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '600' },
-  hint: { fontSize: 12, marginTop: -8 },
+  heading: { fontSize: 24, fontWeight: '800', marginBottom: 8, color: '#F5F5F7' },
+  label: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
+  hint: { fontSize: 12, marginTop: -8, color: 'rgba(255,255,255,0.35)' },
   input: {
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    color: '#F5F5F7',
   },
   tabRow: {
     flexDirection: 'row',
     borderRadius: 10,
     padding: 3,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   tab: {
     flex: 1,
@@ -254,13 +240,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  tabText: { fontSize: 15, fontWeight: '600' },
+  tabText: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
+  tabTextActive: { color: '#F5F5F7' },
   colorRow: {
     flexDirection: 'row',
     gap: 14,
@@ -274,7 +257,7 @@ const styles = StyleSheet.create({
   },
   colorBtnActive: {
     borderWidth: 3,
-    borderColor: '#3A3A3C',
+    borderColor: '#FFFFFF',
   },
   iconGrid: {
     flexDirection: 'row',
@@ -286,11 +269,12 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBtnActive: {
-    borderWidth: 2,
+    borderColor: CrimsonColors.primary,
   },
   tintRow: {
     flexDirection: 'row',
@@ -304,7 +288,7 @@ const styles = StyleSheet.create({
   },
   tintBtnActive: {
     borderWidth: 3,
-    borderColor: '#3A3A3C',
+    borderColor: '#FFFFFF',
   },
   previewRow: {
     flexDirection: 'row',
@@ -312,7 +296,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
   },
-  previewLabel: { fontSize: 13 },
+  previewLabel: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   previewDot: { width: 24, height: 24, borderRadius: 12 },
   saveBtn: {
     paddingVertical: 16,

@@ -1,20 +1,23 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, ImageBackground, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
-import { StatusCard } from '@/src/components/StatusCard';
 import { PartnerSwitcher } from '@/src/components/PartnerSwitcher';
 import { buildTodayInfo } from '@/src/utils/todayInfo';
 import { Colors, CrimsonColors } from '@/constants/theme';
+import { PHASE_BACKGROUNDS, CRIMSON_LOGO } from '@/src/constants/backgrounds';
+import type { PhaseKey } from '@/src/utils/todayInfo';
+
+const PHASE_ACCENT: Record<PhaseKey, string> = {
+  regular: 'rgba(255,255,255,0.7)',
+  period: '#E85A5F',
+  pms: '#FAE0AD',
+  fertile: '#2DEDF1',
+  ovulation: '#6B7BFF',
+};
 
 export default function HomeScreen() {
-  const isDark = (useColorScheme() ?? 'light') === 'dark';
-  const bgColor = isDark ? Colors.dark.background : Colors.light.background;
-  const textColor = isDark ? Colors.dark.text : Colors.light.text;
-  const dimColor = isDark ? '#9BA1A6' : '#6b6f76';
-
   const router = useRouter();
   const {
     partners,
@@ -48,53 +51,84 @@ export default function HomeScreen() {
 
   const todayInfo = useMemo(() => buildTodayInfo(predictions, partnerLogs), [predictions, partnerLogs]);
 
+  const bgSource = PHASE_BACKGROUNDS[todayInfo.phaseKey] ?? PHASE_BACKGROUNDS.regular;
+  const accent = PHASE_ACCENT[todayInfo.phaseKey];
+
   if (partners.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <Text style={[styles.title, { color: textColor }]}>Crimson</Text>
+      <ImageBackground source={PHASE_BACKGROUNDS.regular} style={styles.bg} resizeMode="cover">
+        <View style={styles.header}>
+          <Image source={CRIMSON_LOGO} style={styles.logo} resizeMode="contain" />
+        </View>
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: dimColor }]}>Add a partner to start tracking</Text>
-          <Text
-            style={styles.addLink}
-            onPress={() => router.push('/partner-form')}
-          >
+          <Text style={styles.emptyText}>Add a partner to start tracking</Text>
+          <Text style={styles.addLink} onPress={() => router.push('/partner-form')}>
             + Add Partner
           </Text>
         </View>
-      </View>
+      </ImageBackground>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      <Text style={[styles.title, { color: textColor }]}>Crimson</Text>
+    <ImageBackground source={bgSource} style={styles.bg} resizeMode="cover">
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Image source={CRIMSON_LOGO} style={styles.logo} resizeMode="contain" />
+        </View>
 
-      <PartnerSwitcher
-        partners={partners}
-        activeId={activePartnerId}
-        onSelect={setActivePartner}
-        onAdd={() => router.push('/partner-form')}
-      />
+        <PartnerSwitcher
+          partners={partners}
+          activeId={activePartnerId}
+          onSelect={setActivePartner}
+          onAdd={() => router.push('/partner-form')}
+        />
 
-      <StatusCard
-        phaseKey={todayInfo.phaseKey}
-        phaseLabel={todayInfo.phaseLabel}
-        phaseSubtitle={todayInfo.phaseSubtitle}
-        nextEventLabel={todayInfo.nextEventLabel}
-        bestMove={todayInfo.bestMove}
-      />
-    </View>
+        <View style={styles.cards}>
+          {/* Card 1 – Current Phase */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Current phase:</Text>
+            <Text style={[styles.phaseTitle, { color: accent }]}>{todayInfo.phaseLabel}</Text>
+            <Text style={styles.phaseSubtitle}>{todayInfo.phaseSubtitle}</Text>
+            <Text style={styles.bestMove}>{todayInfo.bestMove}</Text>
+          </View>
+
+          {/* Card 2 – Next Period */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Next period:</Text>
+            <Text style={styles.cardBigText}>
+              {todayInfo.nextPeriodDate ?? 'Not enough data'}
+            </Text>
+          </View>
+
+          {/* Card 3 – Fertile Window */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Fertile Window:</Text>
+            <Text style={styles.cardBigText}>
+              {todayInfo.fertileCountdown ?? 'Not enough data'}
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
+  bg: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
+  },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+  header: {
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 8,
+    paddingBottom: 4,
+  },
+  logo: {
+    width: 180,
+    height: 50,
   },
   empty: {
     flex: 1,
@@ -102,6 +136,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  emptyText: { fontSize: 16 },
-  addLink: { fontSize: 18, fontWeight: '700', color: CrimsonColors.primary },
+  emptyText: { fontSize: 16, color: 'rgba(255,255,255,0.6)' },
+  addLink: { fontSize: 18, fontWeight: '700', color: '#E85A5F' },
+  cards: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 16,
+  },
+  card: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 20,
+  },
+  cardLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 4,
+  },
+  phaseTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  phaseSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 8,
+  },
+  bestMove: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  cardBigText: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#F5F5F7',
+    marginTop: 2,
+  },
 });

@@ -1,6 +1,5 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { View, ImageBackground, StyleSheet, Text } from 'react-native';
 import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
 import { CrimsonCalendar } from '@/src/components/CrimsonCalendar';
@@ -10,7 +9,8 @@ import { PmsAdjustModal } from '@/src/components/PmsAdjustModal';
 import { OverlayToggles } from '@/src/components/OverlayToggles';
 import { parseDate, addDays, toDateOnly } from '@/src/utils/date';
 import { PeriodLog } from '@/src/types';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
+import { CALENDAR_BACKGROUND } from '@/src/constants/backgrounds';
 
 function getLogContainingDate(logs: PeriodLog[], date: string): PeriodLog | null {
   const d = parseDate(date);
@@ -23,9 +23,6 @@ function getLogContainingDate(logs: PeriodLog[], date: string): PeriodLog | null
 }
 
 export default function CalendarScreen() {
-  const isDark = (useColorScheme() ?? 'light') === 'dark';
-  const bgColor = isDark ? Colors.dark.background : Colors.light.background;
-
   const {
     partners,
     periodLogs,
@@ -104,23 +101,29 @@ export default function CalendarScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      <View style={styles.calendarWrap}>
-        <CrimsonCalendar
-          predictions={predictions}
-          logs={partnerLogs}
-          onDayPress={handleDayPress}
+    <ImageBackground
+      source={CALENDAR_BACKGROUND}
+      style={styles.bg}
+      resizeMode="cover"
+    >
+      <Text style={styles.headline}>Cycle Calendar</Text>
+      <View style={styles.contentWrap}>
+        <View style={styles.calendarCard}>
+          <CrimsonCalendar
+            predictions={predictions}
+            logs={partnerLogs}
+            onDayPress={handleDayPress}
+          />
+        </View>
+        <OverlayToggles
+          showPms={showPms}
+          showFertility={showFertility}
+          showOvulation={showOvulation}
+          onTogglePms={togglePms}
+          onToggleFertility={toggleFertility}
+          onToggleOvulation={toggleOvulation}
         />
       </View>
-
-      <OverlayToggles
-        showPms={showPms}
-        showFertility={showFertility}
-        showOvulation={showOvulation}
-        onTogglePms={togglePms}
-        onToggleFertility={toggleFertility}
-        onToggleOvulation={toggleOvulation}
-      />
 
       {logModalDate != null && (
         <LogPeriodModal
@@ -156,11 +159,33 @@ export default function CalendarScreen() {
           onDismiss={() => setShowPmsModal(false)}
         />
       )}
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 50 },
-  calendarWrap: { flex: 1 },
+  bg: {
+    flex: 1,
+    paddingTop: 50,
+    backgroundColor: Colors.dark.background,
+  },
+  headline: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Fonts.serif as string,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  contentWrap: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  calendarCard: {
+    flex: 1,
+    marginHorizontal: 12,
+    marginBottom: 4,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 20,
+  },
 });

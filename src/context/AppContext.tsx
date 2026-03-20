@@ -188,7 +188,7 @@ const initialState: AppState = {
   showOvulation: true,
   pinCode: null,
   pinEnabled: false,
-  themeMode: 'light' as ThemeMode,
+  themeMode: 'dark' as ThemeMode,
 };
 
 type AppContextValue = AppState & {
@@ -224,7 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             activePartnerId: s.partners?.[0]?.id ?? null,
             pinCode: s.pinCode ?? null,
             pinEnabled: s.pinEnabled ?? false,
-            themeMode: (s.themeMode as ThemeMode) ?? 'system',
+            themeMode: 'dark' as ThemeMode,
           },
         });
       }
@@ -232,7 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.pinEnabled || state.themeMode !== 'system') {
+    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.pinEnabled) {
       saveState({
         partners: state.partners,
         periodLogs: state.periodLogs,

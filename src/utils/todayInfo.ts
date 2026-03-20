@@ -9,6 +9,8 @@ export type TodayInfo = {
   phaseSubtitle: string;
   nextEventLabel: string | null;
   bestMove: string;
+  nextPeriodDate: string | null;
+  fertileCountdown: string | null;
 };
 
 type PredictionEntry = {
@@ -64,8 +66,10 @@ export function buildTodayInfo(
   }
 
   const nextEventLabel = findNextEvent(predictions, today);
+  const nextPeriodDate = findNextPeriodDate(predictions, today);
+  const fertileCountdown = findFertileCountdown(predictions, today, p);
 
-  return { phaseKey, phaseLabel, phaseSubtitle, nextEventLabel, bestMove };
+  return { phaseKey, phaseLabel, phaseSubtitle, nextEventLabel, bestMove, nextPeriodDate, fertileCountdown };
 }
 
 function findNextEvent(
@@ -94,6 +98,65 @@ function findNextEvent(
     }
     if (pred.isPMS && !todayP?.isPMS && !todayP?.isPeriod) {
       return formatCountdown('PMS', i);
+    }
+  }
+
+  return null;
+}
+
+function findNextPeriodDate(
+  predictions: Record<string, PredictionEntry>,
+  todayStr: string,
+): string | null {
+  const today = parseDate(todayStr);
+  const todayP = predictions[todayStr];
+  const inPeriod = todayP?.isPeriod;
+
+  for (let i = inPeriod ? 1 : 0; i <= 90; i++) {
+    const d = addDays(today, i);
+    const str = toDateOnly(d);
+    const pred = predictions[str];
+    if (!pred) continue;
+
+    if (pred.isPeriod && (i > 0 || !inPeriod)) {
+      const prevStr = toDateOnly(addDays(d, -1));
+      const prevPred = predictions[prevStr];
+      if (!prevPred?.isPeriod || i === 0) {
+        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      }
+    }
+  }
+
+  return null;
+}
+
+function findFertileCountdown(
+  predictions: Record<string, PredictionEntry>,
+  todayStr: string,
+  todayP: PredictionEntry | undefined,
+): string | null {
+  const today = parseDate(todayStr);
+
+  if (todayP?.isFertileWindow || todayP?.isOvulationDay) {
+    let remaining = 0;
+    for (let i = 1; i <= 14; i++) {
+      const str = toDateOnly(addDays(today, i));
+      const pred = predictions[str];
+      if (pred?.isFertileWindow || pred?.isOvulationDay) {
+        remaining++;
+      } else {
+        break;
+      }
+    }
+    return remaining > 0 ? `${remaining} more day${remaining === 1 ? '' : 's'}` : 'Last day';
+  }
+
+  for (let i = 1; i <= 60; i++) {
+    const d = addDays(today, i);
+    const str = toDateOnly(d);
+    const pred = predictions[str];
+    if (pred?.isFertileWindow) {
+      return i === 1 ? 'Starts tomorrow' : `Starts in ${i} days`;
     }
   }
 
