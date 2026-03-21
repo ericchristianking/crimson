@@ -5,7 +5,7 @@ import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
 import { PartnerSwitcher } from '@/src/components/PartnerSwitcher';
 import { buildTodayInfo } from '@/src/utils/todayInfo';
-import { Colors, CrimsonColors } from '@/constants/theme';
+import { Colors, CrimsonColors, Fonts } from '@/constants/theme';
 import { PHASE_BACKGROUNDS, CRIMSON_LOGO } from '@/src/constants/backgrounds';
 import type { PhaseKey } from '@/src/utils/todayInfo';
 
@@ -61,9 +61,9 @@ export default function HomeScreen() {
           <Image source={CRIMSON_LOGO} style={styles.logo} resizeMode="contain" />
         </View>
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Add a partner to start tracking</Text>
+          <Text style={styles.emptyText}>Add a profile to start tracking</Text>
           <Text style={styles.addLink} onPress={() => router.push('/partner-form')}>
-            + Add Partner
+            + Add Profile
           </Text>
         </View>
       </ImageBackground>
@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  emptyText: { fontSize: 16, color: 'rgba(255,255,255,0.6)' },
-  addLink: { fontSize: 18, fontWeight: '700', color: '#E85A5F' },
+  emptyText: { fontSize: 16, color: 'rgba(255,255,255,0.6)', fontFamily: Fonts.regular },
+  addLink: { fontSize: 18, fontWeight: '400', color: '#E85A5F', fontFamily: Fonts.regular },
   cards: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -154,26 +154,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
     marginBottom: 4,
+    fontFamily: Fonts.regular,
   },
   phaseTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '400',
     marginBottom: 4,
+    fontFamily: Fonts.regular,
   },
   phaseSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 8,
+    fontFamily: Fonts.regular,
   },
   bestMove: {
     fontSize: 13,
     fontStyle: 'italic',
     color: 'rgba(255,255,255,0.5)',
+    fontFamily: Fonts.regular,
   },
   cardBigText: {
     fontSize: 26,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#F5F5F7',
     marginTop: 2,
+    fontFamily: Fonts.regular,
   },
 });

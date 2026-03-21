@@ -7,6 +7,7 @@ export type StoredState = {
   periodLogs: { id: string; partnerId: string; startDate: string; periodLengthDays: number }[];
   pinCode?: string | null;
   pinEnabled?: boolean;
+  pinEmail?: string | null;
   themeMode?: string;
 };
 

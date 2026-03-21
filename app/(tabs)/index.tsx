@@ -106,7 +106,9 @@ export default function CalendarScreen() {
       style={styles.bg}
       resizeMode="cover"
     >
-      <Text style={styles.headline}>Cycle Calendar</Text>
+      <View style={styles.pageHeader}>
+        <Text style={styles.headline}>Cycle Calendar</Text>
+      </View>
       <View style={styles.contentWrap}>
         <View style={styles.calendarCard}>
           <CrimsonCalendar
@@ -166,16 +168,19 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   bg: {
     flex: 1,
-    paddingTop: 50,
     backgroundColor: Colors.dark.background,
+  },
+  pageHeader: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   headline: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#FFFFFF',
-    fontFamily: Fonts.serif as string,
-    textAlign: 'center',
-    marginBottom: 16,
+    fontFamily: Fonts.regular,
+    textAlign: 'left',
   },
   contentWrap: {
     flex: 1,

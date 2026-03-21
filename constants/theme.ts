@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 
 const primaryCrimson = '#9B2226';
 
@@ -16,20 +15,20 @@ export const Colors = {
 export const CrimsonColors = {
   primary: primaryCrimson,
 
-  period: '#E85A5F',
-  periodGlow: 'rgba(232,90,95,0.45)',
-  periodGlowCenter: 'rgba(232,90,95,0.7)',
-  periodSolid: 'rgba(232,90,95,0.75)',
+  period: '#9D0615',
+  periodGlow: 'rgba(157,6,21,0.45)',
+  periodGlowCenter: 'rgba(157,6,21,0.7)',
+  periodSolid: 'rgba(157,6,21,0.75)',
 
   pms: '#702887',
   pmsGlow: 'rgba(112,40,135,0.35)',
   pmsGlowCenter: 'rgba(112,40,135,0.6)',
   pmsSolid: 'rgba(112,40,135,0.7)',
 
-  fertile: '#2DEDF1',
-  fertileGlow: 'rgba(45,237,241,0.35)',
-  fertileGlowCenter: 'rgba(45,237,241,0.65)',
-  fertileSolid: 'rgba(45,237,241,0.6)',
+  fertile: '#0A9EA3',
+  fertileGlow: 'rgba(10,158,163,0.35)',
+  fertileGlowCenter: 'rgba(10,158,163,0.65)',
+  fertileSolid: 'rgba(10,158,163,0.6)',
 
   ovulation: '#005AFF',
   ovulationGlow: 'rgba(0,90,255,0.4)',
@@ -45,23 +44,9 @@ export const CrimsonColors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const Fonts = {
+  regular:   'DMSans_400Regular',
+  medium:    'DMSans_500Medium',
+  semiBold:  'DMSans_600SemiBold',
+  bold:      'DMSans_700Bold',
+};

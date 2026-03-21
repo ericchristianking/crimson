@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { House, CalendarDots, GearSix } from 'phosphor-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Fonts } from '@/constants/theme';
 
 export default function TabLayout() {
   return (
@@ -12,6 +13,10 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#6b6f76',
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarLabelStyle: {
+          fontFamily: Fonts.regular,
+          fontSize: 11,
+        },
         tabBarStyle: {
           backgroundColor: '#0A0A0A',
           borderTopWidth: 0,
@@ -21,21 +26,21 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <House size={26} color={color} weight="regular" />,
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
           title: 'Calendar',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <CalendarDots size={26} color={color} weight="regular" />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }) => <GearSix size={26} color={color} weight="regular" />,
         }}
       />
     </Tabs>

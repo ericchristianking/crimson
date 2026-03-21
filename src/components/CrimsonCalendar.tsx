@@ -7,9 +7,8 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { PredictedDayState, PeriodLog } from '@/src/types';
-import { CrimsonColors } from '@/constants/theme';
+import { CrimsonColors, Fonts } from '@/constants/theme';
 import { addMonths, toDateOnly, parseDate, addDays } from '@/src/utils/date';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -21,14 +20,12 @@ const FUTURE_MONTHS = 12;
 const MONTH_HEADER_HEIGHT = 44;
 const WEEK_LABEL_HEIGHT = 24;
 const ROW_HEIGHT = DAY_SIZE + 8;
+const CIRCLE_SIZE = DAY_SIZE - 10;
 
-// Solid circle for today
-const CIRCLE_SIZE = DAY_SIZE - 8;
-// SVG glow slightly larger than cell so it bleeds softly into neighbors
-const GLOW_SIZE = Math.round(DAY_SIZE * 1.35);
+/** Opacity multiplier for non-current months */
+const DIM_OPACITY = 0.4;
 
-type MonthData = { key: string; year: number; month: number };
-type PhaseInfo = { color: string; solid: string } | null;
+type MonthData = { key: string; year: number; month: number; isCurrent: boolean };
 
 type Props = {
   predictions: Record<string, PredictedDayState>;
@@ -51,26 +48,37 @@ function isLoggedDay(date: string, logs: PeriodLog[]) {
     return d >= s && d <= addDays(s, l.periodLengthDays - 1);
   });
 }
-function generateMonths(): MonthData[] {
-  return Array.from({ length: PAST_MONTHS + FUTURE_MONTHS + 1 }, (_, i) => {
-    const d = addMonths(new Date(), i - PAST_MONTHS);
-    return { key: `${d.getFullYear()}-${d.getMonth()}`, year: d.getFullYear(), month: d.getMonth() };
-  });
-}
-function getPhase(isPeriod: boolean, isLogged: boolean, isPMS: boolean, isOv: boolean, isFert: boolean): PhaseInfo {
-  if (isLogged || isPeriod) return { color: CrimsonColors.period,    solid: CrimsonColors.periodSolid };
-  if (isOv)                  return { color: CrimsonColors.ovulation, solid: CrimsonColors.ovulationSolid };
-  if (isFert)                return { color: CrimsonColors.fertile,   solid: CrimsonColors.fertileSolid };
-  if (isPMS)                 return { color: CrimsonColors.pms,       solid: CrimsonColors.pmsSolid };
+
+type PhaseColor = { bg: string; text: string } | null;
+
+function getPhaseColor(
+  isPeriod: boolean, isLogged: boolean,
+  isPMS: boolean, isOv: boolean, isFert: boolean,
+): PhaseColor {
+  if (isLogged || isPeriod) return { bg: CrimsonColors.period,              text: '#fff' };
+  if (isOv)                  return { bg: 'rgba(0,90,255,0.7)',             text: '#fff' };
+  if (isFert)                return { bg: 'rgba(10,158,163,0.7)',           text: '#fff' };
+  if (isPMS)                 return { bg: 'rgba(112,40,135,0.7)',           text: '#fff' };
   return null;
 }
 
-// Offset to center a GLOW_SIZE element inside a DAY_SIZE cell
-const glowLeft = (DAY_SIZE - GLOW_SIZE) / 2;
-const glowTop  = (ROW_HEIGHT - GLOW_SIZE) / 2;
+function generateMonths(): MonthData[] {
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth();
+  return Array.from({ length: PAST_MONTHS + FUTURE_MONTHS + 1 }, (_, i) => {
+    const d = addMonths(now, i - PAST_MONTHS);
+    return {
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      isCurrent: d.getFullYear() === curYear && d.getMonth() === curMonth,
+    };
+  });
+}
 
 export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
-  const months  = useMemo(generateMonths, []);
+  const months   = useMemo(generateMonths, []);
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
 
   const monthHeights = useMemo(() =>
@@ -84,10 +92,11 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
   }, [monthHeights]);
 
   const renderMonth = useCallback(({ item }: { item: MonthData }) => {
-    const { year, month } = item;
+    const { year, month, isCurrent } = item;
     const total  = getDaysInMonth(year, month);
     const offset = getFirstDayOffset(year, month);
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const dimStyle = isCurrent ? undefined : { opacity: DIM_OPACITY };
 
     const cells: React.ReactNode[] = Array.from({ length: offset }, (_, i) => (
       <View key={`e-${i}`} style={styles.dayCell} />
@@ -95,60 +104,26 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
 
     for (let day = 1; day <= total; day++) {
       const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const pred = predictions[ds];
+      const pred     = predictions[ds];
       const isToday  = ds === todayStr;
       const isLogged = isLoggedDay(ds, logs);
-      const phase = getPhase(
+      const phase    = getPhaseColor(
         pred?.isPeriod ?? false, isLogged,
         pred?.isPMS ?? false, pred?.isOvulationDay ?? false, pred?.isFertileWindow ?? false,
       );
 
       cells.push(
-        <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.7}>
-
-          {/* ── Today + phase: solid opaque circle ── */}
-          {phase && isToday ? (
-            <View style={[styles.solidCircle, {
-              backgroundColor: phase.solid,
-              shadowColor: phase.color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1,
-              shadowRadius: 18,
-            }]}>
-              <Text style={styles.textBright}>{day}</Text>
+        <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.6}>
+          {phase ? (
+            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, dimStyle]}>
+              <Text style={[styles.textPhase, { color: phase.text }]}>{day}</Text>
             </View>
-
-          /* ── Phase day: large SVG radial glow ── */
-          ) : phase ? (
-            <View style={styles.glowCell}>
-              {/* SVG is larger than the cell, centered with negative offset */}
-              <Svg
-                width={GLOW_SIZE}
-                height={GLOW_SIZE}
-                style={{ position: 'absolute', left: glowLeft, top: glowTop }}
-              >
-                <Defs>
-                  <RadialGradient id={`g${ds}`} cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%"   stopColor={phase.color} stopOpacity="0.85" />
-                    <Stop offset="45%"  stopColor={phase.color} stopOpacity="0.45" />
-                    <Stop offset="75%"  stopColor={phase.color} stopOpacity="0.12" />
-                    <Stop offset="100%" stopColor={phase.color} stopOpacity="0" />
-                  </RadialGradient>
-                </Defs>
-                <Circle cx={GLOW_SIZE / 2} cy={GLOW_SIZE / 2} r={GLOW_SIZE / 2} fill={`url(#g${ds})`} />
-              </Svg>
-              <Text style={styles.textBright}>{day}</Text>
-            </View>
-
-          /* ── Today, no phase: white ring ── */
           ) : isToday ? (
-            <View style={styles.todayRing}>
-              <Text style={styles.textBright}>{day}</Text>
+            <View style={[styles.circle, styles.todayEmpty]}>
+              <Text style={styles.textToday}>{day}</Text>
             </View>
-
-          /* ── Normal day ── */
           ) : (
-            <Text style={styles.textNormal}>{day}</Text>
+            <Text style={[styles.textNormal, dimStyle]}>{day}</Text>
           )}
         </TouchableOpacity>,
       );
@@ -186,49 +161,31 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
 
 const styles = StyleSheet.create({
   listContent: { paddingBottom: 20 },
-  monthContainer: { marginBottom: 8, overflow: 'visible' },
+  monthContainer: { marginBottom: 8 },
   monthHeader: { paddingHorizontal: CALENDAR_PADDING, height: MONTH_HEADER_HEIGHT, justifyContent: 'center' },
-  monthTitle: { fontSize: 18, fontWeight: '700', color: '#F5F5F7' },
+  monthTitle: { fontSize: 18, fontWeight: '400', color: '#F5F5F7', fontFamily: Fonts.regular },
   weekRow: { flexDirection: 'row', paddingHorizontal: CALENDAR_PADDING, height: WEEK_LABEL_HEIGHT },
   weekCell: { width: DAY_SIZE, alignItems: 'center', justifyContent: 'center' },
-  weekText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: CALENDAR_PADDING,
-    overflow: 'visible',
-  },
-  dayCell: {
-    width: DAY_SIZE,
-    height: ROW_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  // Phase glow cell — same size as dayCell, overflow visible
-  glowCell: {
-    width: DAY_SIZE,
-    height: ROW_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  solidCircle: {
+  weekText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.4)', fontFamily: Fonts.semiBold },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: CALENDAR_PADDING },
+  dayCell: { width: DAY_SIZE, height: ROW_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+  circle: {
     width: CIRCLE_SIZE,
     height: CIRCLE_SIZE,
     borderRadius: CIRCLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todayRing: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
+  todayBorder: {
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+  todayEmpty: {
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  textNormal: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.7)' },
-  textBright: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  textNormal: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.75)', fontFamily: Fonts.medium },
+  textPhase:  { fontSize: 14, fontWeight: '400', fontFamily: Fonts.regular },
+  textToday:  { fontSize: 15, fontWeight: '400', color: '#FFFFFF', fontFamily: Fonts.regular },
 });

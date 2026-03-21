@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { CrimsonColors } from '@/constants/theme';
+import { CrimsonColors, Fonts } from '@/constants/theme';
 
 type Props = {
   showPms: boolean;
@@ -72,5 +72,5 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { fontSize: 14, fontWeight: '600', color: '#F5F5F7' },
+  label: { fontSize: 14, fontWeight: '600', color: '#F5F5F7', fontFamily: Fonts.semiBold },
 });

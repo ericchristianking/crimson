@@ -1,18 +1,22 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Vibration } from 'react-native';
-import { CrimsonColors } from '@/constants/theme';
+import { CrimsonColors, Fonts } from '@/constants/theme';
 import { CRIMSON_LOGO } from '@/src/constants/backgrounds';
+import { ForgotPinModal } from '@/src/components/ForgotPinModal';
 
 const PIN_LENGTH = 4;
 
 type Props = {
   correctPin: string;
+  pinEmail: string | null;
   onUnlock: () => void;
+  onResetPin: (newPin: string, email: string) => void;
 };
 
-export function PinLockScreen({ correctPin, onUnlock }: Props) {
+export function PinLockScreen({ correctPin, pinEmail, onUnlock, onResetPin }: Props) {
   const [entered, setEntered] = useState('');
   const [error, setError] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   const handleKey = useCallback(
     (digit: string) => {
@@ -82,6 +86,23 @@ export function PinLockScreen({ correctPin, onUnlock }: Props) {
           },
         )}
       </View>
+
+      {pinEmail ? (
+        <TouchableOpacity style={styles.forgotBtn} onPress={() => setShowForgot(true)}>
+          <Text style={styles.forgotText}>Forgot PIN?</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {showForgot && pinEmail ? (
+        <ForgotPinModal
+          email={pinEmail}
+          onReset={(newPin, email) => {
+            setShowForgot(false);
+            onResetPin(newPin, email);
+          }}
+          onDismiss={() => setShowForgot(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -103,6 +124,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255,255,255,0.5)',
     marginBottom: 32,
+    fontFamily: Fonts.regular,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -128,6 +150,7 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 14,
     marginBottom: 8,
+    fontFamily: Fonts.regular,
   },
   keypad: {
     flexDirection: 'row',
@@ -145,9 +168,20 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '500',
     color: '#F5F5F7',
+    fontFamily: Fonts.medium,
   },
   keyTextDel: {
     fontSize: 24,
     color: 'rgba(255,255,255,0.5)',
+  },
+  forgotBtn: {
+    marginTop: 28,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  forgotText: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.4)',
+    fontFamily: Fonts.regular,
   },
 });

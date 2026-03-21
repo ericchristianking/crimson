@@ -14,7 +14,7 @@ import { useApp } from '@/src/context/AppContext';
 import { CrimsonColors } from '@/constants/theme';
 import { PARTNER_ICONS, getIconComponent } from '@/src/constants/partnerIcons';
 
-const PRESET_COLORS = ['#FF46FD', '#E92D35', '#FF7529', '#FFDC39', '#2DEDF1', '#6D46FF'];
+const PRESET_COLORS = ['#F5D69D', '#ED2F17', '#9D0615', '#702887', '#005AFF', '#00AEBF'];
 const DEFAULT_ICON_COLOR = '#AAAAAA';
 
 type DisplayChoice = 'color' | 'icon';
@@ -70,7 +70,7 @@ export default function PartnerFormScreen() {
 
       <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
         <Text style={styles.heading}>
-          {existing ? 'Edit Partner' : 'Add Partner'}
+          {existing ? 'Edit Profile' : 'Add Profile'}
         </Text>
 
         <Text style={styles.label}>Name</Text>
@@ -79,7 +79,7 @@ export default function PartnerFormScreen() {
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="Partner's name"
+          placeholder="Name"
           placeholderTextColor="rgba(255,255,255,0.3)"
           autoCapitalize="words"
         />

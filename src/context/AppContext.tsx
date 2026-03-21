@@ -14,6 +14,7 @@ type AppState = {
   showOvulation: boolean;
   pinCode: string | null;
   pinEnabled: boolean;
+  pinEmail: string | null;
   themeMode: ThemeMode;
 };
 
@@ -31,6 +32,7 @@ type Action =
   | { type: 'TOGGLE_OVULATION' }
   | { type: 'SET_PIN'; payload: string }
   | { type: 'CLEAR_PIN' }
+  | { type: 'SET_PIN_EMAIL'; payload: string }
   | { type: 'SET_THEME_MODE'; payload: ThemeMode };
 
 const MIN_CYCLE_GAP_DAYS = 21;
@@ -171,7 +173,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_PIN':
       return { ...state, pinCode: action.payload, pinEnabled: true };
     case 'CLEAR_PIN':
-      return { ...state, pinCode: null, pinEnabled: false };
+      return { ...state, pinCode: null, pinEnabled: false, pinEmail: null };
+    case 'SET_PIN_EMAIL':
+      return { ...state, pinEmail: action.payload };
     case 'SET_THEME_MODE':
       return { ...state, themeMode: action.payload };
     default:
@@ -188,6 +192,7 @@ const initialState: AppState = {
   showOvulation: true,
   pinCode: null,
   pinEnabled: false,
+  pinEmail: null,
   themeMode: 'dark' as ThemeMode,
 };
 
@@ -205,6 +210,7 @@ type AppContextValue = AppState & {
   toggleOvulation: () => void;
   setPin: (pin: string) => void;
   clearPin: () => void;
+  setPinEmail: (email: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
 };
 
@@ -224,6 +230,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             activePartnerId: s.partners?.[0]?.id ?? null,
             pinCode: s.pinCode ?? null,
             pinEnabled: s.pinEnabled ?? false,
+            pinEmail: s.pinEmail ?? null,
             themeMode: 'dark' as ThemeMode,
           },
         });
@@ -238,10 +245,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         periodLogs: state.periodLogs,
         pinCode: state.pinCode,
         pinEnabled: state.pinEnabled,
+        pinEmail: state.pinEmail,
         themeMode: state.themeMode,
       });
     }
-  }, [state.partners, state.periodLogs, state.pinCode, state.pinEnabled, state.themeMode]);
+  }, [state.partners, state.periodLogs, state.pinCode, state.pinEnabled, state.pinEmail, state.themeMode]);
 
   const addPeriodLog = useCallback(
     (partnerId: string, startDate: string, days: number): AddPeriodResult => {
@@ -333,6 +341,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleOvulation: () => dispatch({ type: 'TOGGLE_OVULATION' }),
     setPin: (pin: string) => dispatch({ type: 'SET_PIN', payload: pin }),
     clearPin: () => dispatch({ type: 'CLEAR_PIN' }),
+    setPinEmail: (email: string) => dispatch({ type: 'SET_PIN_EMAIL', payload: email }),
     setThemeMode: (mode: ThemeMode) => dispatch({ type: 'SET_THEME_MODE', payload: mode }),
   };
 
