@@ -51,6 +51,10 @@ function AppGate() {
         name="partner-form"
         options={{ presentation: 'modal', headerShown: false }}
       />
+      <Stack.Screen
+        name="article"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }

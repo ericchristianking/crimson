@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.background,
   },
   pageHeader: {
-    paddingTop: 60,
+    paddingTop: 76,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 35,
   },
   headline: {
     fontSize: 28,

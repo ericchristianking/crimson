@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { House, CalendarDots, GearSix } from 'phosphor-react-native';
+import { House, CalendarDots, BookOpen, GearSix } from 'phosphor-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Fonts } from '@/constants/theme';
@@ -34,6 +34,13 @@ export default function TabLayout() {
         options={{
           title: 'Calendar',
           tabBarIcon: ({ color }) => <CalendarDots size={26} color={color} weight="regular" />,
+        }}
+      />
+      <Tabs.Screen
+        name="learn"
+        options={{
+          title: 'Knowledge',
+          tabBarIcon: ({ color }) => <BookOpen size={26} color={color} weight="regular" />,
         }}
       />
       <Tabs.Screen
