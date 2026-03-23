@@ -5,9 +5,7 @@ const KEY = '@crimson_app_state';
 export type StoredState = {
   partners: { id: string; name: string; color: string; pmsDays?: number; icon?: string }[];
   periodLogs: { id: string; partnerId: string; startDate: string; periodLengthDays: number }[];
-  pinCode?: string | null;
-  pinEnabled?: boolean;
-  pinEmail?: string | null;
+  appLockEnabled?: boolean;
   themeMode?: string;
 };
 

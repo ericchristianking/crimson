@@ -47,7 +47,7 @@ export function buildTodayInfo(
     phaseKey = 'period';
     phaseLabel = 'Period';
     phaseSubtitle = 'Menstruation is active.';
-    bestMove = 'Bring comfort, not solutions.';
+    bestMove = 'A little extra care goes a long way.';
   } else if (p?.isOvulationDay) {
     phaseKey = 'ovulation';
     phaseLabel = 'Ovulation';
@@ -57,7 +57,7 @@ export function buildTodayInfo(
     phaseKey = 'fertile';
     phaseLabel = 'Fertile window';
     phaseSubtitle = 'Higher chance of pregnancy.';
-    bestMove = 'Good time for plans.';
+    bestMove = 'Plan accordingly.';
   } else if (p?.isPMS) {
     phaseKey = 'pms';
     phaseLabel = 'PMS window';

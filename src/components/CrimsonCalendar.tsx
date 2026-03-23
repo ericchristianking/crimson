@@ -77,9 +77,19 @@ function generateMonths(): MonthData[] {
   });
 }
 
+function getLatestPeriodStart(logs: PeriodLog[]): string | null {
+  if (logs.length === 0) return null;
+  let latest = logs[0].startDate;
+  for (const l of logs) {
+    if (l.startDate > latest) latest = l.startDate;
+  }
+  return latest;
+}
+
 export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
   const months   = useMemo(generateMonths, []);
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
+  const latestPeriodStart = useMemo(() => getLatestPeriodStart(logs), [logs]);
 
   const monthHeights = useMemo(() =>
     months.map((m) => MONTH_HEADER_HEIGHT + WEEK_LABEL_HEIGHT + weekRowsForMonth(m.year, m.month) * ROW_HEIGHT + 8),
@@ -112,10 +122,12 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
         pred?.isPMS ?? false, pred?.isOvulationDay ?? false, pred?.isFertileWindow ?? false,
       );
 
+      const isPastCycle = phase && latestPeriodStart ? ds < latestPeriodStart : false;
+
       cells.push(
         <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.6}>
           {phase ? (
-            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, dimStyle]}>
+            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, isPastCycle && { opacity: DIM_OPACITY }]}>
               <Text style={[styles.textPhase, { color: phase.text }]}>{day}</Text>
             </View>
           ) : isToday ? (

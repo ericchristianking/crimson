@@ -169,9 +169,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
   },
   bestMove: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
     fontFamily: Fonts.regular,
   },
   cardBigText: {

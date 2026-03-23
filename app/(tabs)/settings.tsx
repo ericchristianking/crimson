@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,36 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useApp } from '@/src/context/AppContext';
 import { CrimsonColors, Fonts } from '@/constants/theme';
-import { PinSetModal } from '@/src/components/PinSetModal';
 import { getIconComponent } from '@/src/constants/partnerIcons';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { partners, pinEnabled, setPin, clearPin, setPinEmail, deletePartner } = useApp();
-  const [showPinModal, setShowPinModal] = useState(false);
+  const { partners, appLockEnabled, setAppLock, deletePartner } = useApp();
 
-  const handlePinToggle = (value: boolean) => {
+  const handleLockToggle = async (value: boolean) => {
     if (value) {
-      setShowPinModal(true);
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!compatible || !enrolled) {
+        Alert.alert(
+          'Not Available',
+          'Your device does not have biometric authentication set up. Please enable Face ID, Touch ID, or a device passcode in your phone settings.',
+        );
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Confirm to enable App Lock',
+        fallbackLabel: 'Use passcode',
+        disableDeviceFallback: false,
+      });
+      if (result.success) {
+        setAppLock(true);
+      }
     } else {
-      clearPin();
+      setAppLock(false);
     }
   };
 
@@ -54,24 +69,16 @@ export default function SettingsScreen() {
           <View style={styles.rowTextWrap}>
             <Text style={styles.rowTitle}>App Lock</Text>
             <Text style={styles.rowSubtitle}>
-              Require a 4-digit PIN to open the app
+              Use Face ID, Touch ID, or passcode to open the app
             </Text>
           </View>
           <Switch
-            value={pinEnabled}
-            onValueChange={handlePinToggle}
+            value={appLockEnabled}
+            onValueChange={handleLockToggle}
             trackColor={{ false: 'rgba(255,255,255,0.15)', true: CrimsonColors.primary }}
             thumbColor="#fff"
           />
         </View>
-        {pinEnabled && (
-          <TouchableOpacity
-            style={styles.changeBtn}
-            onPress={() => setShowPinModal(true)}
-          >
-            <Text style={styles.changeBtnText}>Change PIN</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Partners */}
@@ -140,17 +147,6 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.bottomSpacer} />
-
-      {showPinModal && (
-        <PinSetModal
-          onSave={(pin, email) => {
-            setPin(pin);
-            setPinEmail(email);
-            setShowPinModal(false);
-          }}
-          onDismiss={() => setShowPinModal(false)}
-        />
-      )}
     </ScrollView>
   );
 }
@@ -196,13 +192,6 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 16, fontWeight: '600', color: '#F5F5F7', fontFamily: Fonts.semiBold },
   rowSubtitle: { fontSize: 13, marginTop: 2, color: 'rgba(255,255,255,0.5)', fontFamily: Fonts.regular },
   dimText: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.4)', fontFamily: Fonts.semiBold },
-  changeBtn: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    padding: 14,
-    alignItems: 'center',
-  },
-  changeBtnText: { fontSize: 15, fontWeight: '600', color: CrimsonColors.primary, fontFamily: Fonts.semiBold },
   partnerRow: {
     flexDirection: 'row',
     alignItems: 'center',
