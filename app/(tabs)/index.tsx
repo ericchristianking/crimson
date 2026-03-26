@@ -108,6 +108,7 @@ export default function CalendarScreen() {
     >
       <View style={styles.pageHeader}>
         <Text style={styles.headline}>Cycle Calendar</Text>
+        <Text style={styles.subtitle}>Tap a day to log or edit</Text>
       </View>
       <View style={styles.contentWrap}>
         <View style={styles.calendarCard}>
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   pageHeader: {
     paddingTop: 76,
     paddingHorizontal: 20,
-    paddingBottom: 35,
+    paddingBottom: 20,
   },
   headline: {
     fontSize: 28,
@@ -182,13 +183,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     textAlign: 'left',
   },
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.55)',
+    fontFamily: Fonts.regular,
+    marginTop: 4,
+  },
   contentWrap: {
     flex: 1,
     flexDirection: 'column',
   },
   calendarCard: {
     flex: 1,
-    marginHorizontal: 12,
+    marginHorizontal: 20,
     marginBottom: 4,
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 20,

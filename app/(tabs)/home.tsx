@@ -11,10 +11,10 @@ import type { PhaseKey } from '@/src/utils/todayInfo';
 
 const PHASE_ACCENT: Record<PhaseKey, string> = {
   regular: 'rgba(255,255,255,0.7)',
-  period: '#E85A5F',
-  pms: '#FAE0AD',
-  fertile: '#2DEDF1',
-  ovulation: '#6B7BFF',
+  period: '#E40118',
+  pms: '#CA903C',
+  fertile: CrimsonColors.fertile,
+  ovulation: CrimsonColors.ovulation,
 };
 
 export default function HomeScreen() {
@@ -26,6 +26,7 @@ export default function HomeScreen() {
     showPms,
     showFertility,
     showOvulation,
+    multiProfileEnabled,
     setActivePartner,
   } = useApp();
 
@@ -77,12 +78,14 @@ export default function HomeScreen() {
           <Image source={CRIMSON_LOGO} style={styles.logo} resizeMode="contain" />
         </View>
 
-        <PartnerSwitcher
-          partners={partners}
-          activeId={activePartnerId}
-          onSelect={setActivePartner}
-          onAdd={() => router.push('/partner-form')}
-        />
+        {multiProfileEnabled && (
+          <PartnerSwitcher
+            partners={partners}
+            activeId={activePartnerId}
+            onSelect={setActivePartner}
+            onAdd={() => router.push('/partner-form')}
+          />
+        )}
 
         <View style={styles.cards}>
           {/* Card 1 – Current Phase */}
@@ -124,7 +127,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 4,
+    paddingBottom: 20,
   },
   logo: {
     width: 180,
@@ -140,14 +143,11 @@ const styles = StyleSheet.create({
   addLink: { fontSize: 18, fontWeight: '400', color: '#E85A5F', fontFamily: Fonts.regular },
   cards: {
     paddingHorizontal: 20,
-    paddingTop: 16,
     gap: 16,
   },
   card: {
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
     padding: 20,
   },
   cardLabel: {

@@ -20,15 +20,15 @@ export const CrimsonColors = {
   periodGlowCenter: 'rgba(157,6,21,0.7)',
   periodSolid: 'rgba(157,6,21,0.75)',
 
-  pms: '#702887',
-  pmsGlow: 'rgba(112,40,135,0.35)',
-  pmsGlowCenter: 'rgba(112,40,135,0.6)',
-  pmsSolid: 'rgba(112,40,135,0.7)',
+  pms: '#CA903C',
+  pmsGlow: 'rgba(202,144,60,0.35)',
+  pmsGlowCenter: 'rgba(202,144,60,0.6)',
+  pmsSolid: 'rgba(202,144,60,0.7)',
 
-  fertile: '#0A9EA3',
-  fertileGlow: 'rgba(10,158,163,0.35)',
-  fertileGlowCenter: 'rgba(10,158,163,0.65)',
-  fertileSolid: 'rgba(10,158,163,0.6)',
+  fertile: '#0C8896',
+  fertileGlow: 'rgba(12,136,150,0.35)',
+  fertileGlowCenter: 'rgba(12,136,150,0.65)',
+  fertileSolid: 'rgba(12,136,150,0.6)',
 
   ovulation: '#005AFF',
   ovulationGlow: 'rgba(0,90,255,0.4)',

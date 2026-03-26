@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,39 @@ import {
 import { useRouter } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useApp } from '@/src/context/AppContext';
+import { usePurchases } from '@/src/context/PurchasesContext';
 import { CrimsonColors, Fonts } from '@/constants/theme';
 import { getIconComponent } from '@/src/constants/partnerIcons';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { partners, appLockEnabled, setAppLock, deletePartner } = useApp();
+  const { partners, appLockEnabled, setAppLock, multiProfileEnabled, setMultiProfile, deletePartner, setOnboardingComplete } = useApp();
+  const { isPro, presentPaywall, presentCustomerCenter, restorePurchases } = usePurchases();
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRestorePurchases = async () => {
+    const info = await restorePurchases();
+    if (info?.entitlements.active['Crimson Pro']) {
+      Alert.alert('Restored', 'Crimson Pro has been restored successfully.');
+    } else {
+      Alert.alert('Nothing to restore', 'No active subscription found for this Apple ID.');
+    }
+  };
+
+  const handleTitleTap = () => {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      Alert.alert('Restart Onboarding?', 'This will show the onboarding flow again.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Restart', onPress: () => setOnboardingComplete(false) },
+      ]);
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 800);
+  };
 
   const handleLockToggle = async (value: boolean) => {
     if (value) {
@@ -60,7 +87,9 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+      <TouchableOpacity activeOpacity={1} onPress={handleTitleTap}>
+        <Text style={styles.title}>Settings</Text>
+      </TouchableOpacity>
 
       {/* Security */}
       <Text style={styles.sectionLabel}>Security</Text>
@@ -81,49 +110,110 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Partners */}
+      {/* Multiple Profiles */}
       <Text style={styles.sectionLabel}>Profiles</Text>
       <View style={styles.section}>
-        {partners.length === 0 ? (
+        <View style={styles.row}>
+          <View style={styles.rowTextWrap}>
+            <Text style={styles.rowTitle}>Multiple Profiles</Text>
+            <Text style={styles.rowSubtitle}>Track multiple people</Text>
+          </View>
+          <Switch
+            value={multiProfileEnabled}
+            onValueChange={setMultiProfile}
+            trackColor={{ false: 'rgba(255,255,255,0.15)', true: CrimsonColors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+      </View>
+
+      {multiProfileEnabled && (
+        <View style={[styles.section, { marginTop: 12 }]}>
+          {partners.length === 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.dimText}>No profiles added</Text>
+            </View>
+          ) : (
+            partners.map((p, i) => (
+              <View
+                key={p.id}
+                style={[
+                  styles.partnerRow,
+                  i < partners.length - 1 && styles.partnerRowBorder,
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.partnerInfo}
+                  onPress={() => router.push(`/partner-form?id=${p.id}`)}
+                >
+                  {(() => {
+                    const IconComp = p.icon ? getIconComponent(p.icon) : null;
+                    if (IconComp) {
+                      return <IconComp size={20} color={p.color} weight="fill" />;
+                    }
+                    if (p.icon) {
+                      return <Text style={styles.partnerIcon}>{p.icon}</Text>;
+                    }
+                    return <View style={[styles.partnerDot, { backgroundColor: p.color }]} />;
+                  })()}
+                  <Text style={styles.partnerName}>{p.name}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDeletePartner(p.id, p.name)}>
+                  <Text style={styles.deleteText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+          <TouchableOpacity
+            style={[styles.addPartnerBtn, partners.length > 0 && styles.addPartnerBtnBorder]}
+            onPress={() => router.push('/partner-form')}
+          >
+            <Text style={styles.addPartnerText}>+ Add Profile</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Subscription */}
+      <Text style={styles.sectionLabel}>Subscription</Text>
+      <View style={styles.section}>
+        {isPro ? (
           <View style={styles.row}>
-            <Text style={styles.dimText}>No profiles added</Text>
+            <View style={styles.rowTextWrap}>
+              <Text style={styles.rowTitle}>Crimson Pro</Text>
+              <Text style={styles.rowSubtitle}>Your subscription is active</Text>
+            </View>
+            <View style={[styles.proBadge]}>
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
           </View>
         ) : (
-          partners.map((p, i) => (
-            <View
-              key={p.id}
-              style={[
-                styles.partnerRow,
-                i < partners.length - 1 && styles.partnerRowBorder,
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.partnerInfo}
-                onPress={() => router.push(`/partner-form?id=${p.id}`)}
-              >
-                {(() => {
-                  const IconComp = p.icon ? getIconComponent(p.icon) : null;
-                  if (IconComp) {
-                    return <IconComp size={20} color={p.color} weight="fill" />;
-                  }
-                  if (p.icon) {
-                    return <Text style={styles.partnerIcon}>{p.icon}</Text>;
-                  }
-                  return <View style={[styles.partnerDot, { backgroundColor: p.color }]} />;
-                })()}
-                <Text style={styles.partnerName}>{p.name}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeletePartner(p.id, p.name)}>
-                <Text style={styles.deleteText}>Delete</Text>
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.row, styles.legalRowBorder]}
+            onPress={presentPaywall}
+            activeOpacity={0.7}
+          >
+            <View style={styles.rowTextWrap}>
+              <Text style={styles.rowTitle}>Upgrade to Crimson Pro</Text>
+              <Text style={styles.rowSubtitle}>Unlock full cycle predictions</Text>
             </View>
-          ))
+            <Text style={styles.legalChevron}>›</Text>
+          </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={[styles.addPartnerBtn, partners.length > 0 && styles.addPartnerBtnBorder]}
-          onPress={() => router.push('/partner-form')}
+          style={[styles.row, isPro && styles.legalRowBorder]}
+          onPress={presentCustomerCenter}
+          activeOpacity={0.7}
         >
-          <Text style={styles.addPartnerText}>+ Add Profile</Text>
+          <Text style={styles.rowTitle}>Manage Subscription</Text>
+          <Text style={styles.legalChevron}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleRestorePurchases}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.rowTitle}>Restore Purchases</Text>
+          <Text style={styles.legalChevron}>›</Text>
         </TouchableOpacity>
       </View>
 
@@ -177,8 +267,6 @@ const styles = StyleSheet.create({
   },
   section: {
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
   },
@@ -231,4 +319,17 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
   },
   bottomSpacer: { height: 40 },
+  proBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: CrimsonColors.primary,
+  },
+  proBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: Fonts.bold,
+    letterSpacing: 0.6,
+  },
 });

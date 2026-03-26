@@ -6,7 +6,9 @@ export type StoredState = {
   partners: { id: string; name: string; color: string; pmsDays?: number; icon?: string }[];
   periodLogs: { id: string; partnerId: string; startDate: string; periodLengthDays: number }[];
   appLockEnabled?: boolean;
+  multiProfileEnabled?: boolean;
   themeMode?: string;
+  onboardingComplete?: boolean;
 };
 
 export async function loadState(): Promise<StoredState | null> {

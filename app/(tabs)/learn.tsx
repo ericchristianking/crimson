@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#F5F5F7',
     fontFamily: Fonts.regular,
-    marginBottom: 6,
+    marginBottom: 20,
   },
   subtitle: {
     fontSize: 14,
@@ -68,8 +68,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',

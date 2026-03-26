@@ -13,7 +13,7 @@ import type { AddPeriodResult } from '@/src/context/AppContext';
 
 const MIN_DAYS = 1;
 const MAX_DAYS = 10;
-const DEFAULT_DAYS = 5;
+const DEFAULT_DAYS = 1;
 
 type Props = {
   date: string;
@@ -85,7 +85,7 @@ export function LogPeriodModal({ date, onConfirm, onForceReplace, onDismiss }: P
     <Modal transparent animationType="fade" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Log period</Text>
+          <Text style={styles.title}>Log Menstruation</Text>
           <Text style={styles.subtitle}>Starting {formatted}</Text>
 
           <View style={styles.stepperRow}>

@@ -13,7 +13,9 @@ type AppState = {
   showFertility: boolean;
   showOvulation: boolean;
   appLockEnabled: boolean;
+  multiProfileEnabled: boolean;
   themeMode: ThemeMode;
+  onboardingComplete: boolean;
 };
 
 type Action =
@@ -29,7 +31,9 @@ type Action =
   | { type: 'TOGGLE_FERTILITY' }
   | { type: 'TOGGLE_OVULATION' }
   | { type: 'SET_APP_LOCK'; payload: boolean }
-  | { type: 'SET_THEME_MODE'; payload: ThemeMode };
+  | { type: 'SET_MULTI_PROFILE'; payload: boolean }
+  | { type: 'SET_THEME_MODE'; payload: ThemeMode }
+  | { type: 'SET_ONBOARDING_COMPLETE'; payload: boolean };
 
 const MIN_CYCLE_GAP_DAYS = 21;
 
@@ -43,6 +47,8 @@ function diffInDays(a: Date, b: Date): number {
   const ms = 1000 * 60 * 60 * 24;
   return Math.round((a.getTime() - b.getTime()) / ms);
 }
+
+const AUTO_FILL_GAP = 3;
 
 function checkPeriod(
   logs: PeriodLog[],
@@ -67,12 +73,12 @@ function checkPeriod(
     }
 
     const gapAfter = diffInDays(newStart, existingEnd);
-    if (gapAfter === 1) {
+    if (gapAfter >= 1 && gapAfter <= AUTO_FILL_GAP) {
       return { ok: true, extended: true };
     }
 
     const gapBefore = diffInDays(existingStart, newEnd);
-    if (gapBefore === 1) {
+    if (gapBefore >= 1 && gapBefore <= AUTO_FILL_GAP) {
       return { ok: true, extended: true };
     }
   }
@@ -88,12 +94,12 @@ function checkPeriod(
   return { ok: true };
 }
 
-function findAdjacentLog(
+function findNearbyLog(
   logs: PeriodLog[],
   partnerId: string,
   startDate: string,
   days: number,
-): { log: PeriodLog; side: 'before' | 'after' } | null {
+): { log: PeriodLog; side: 'before' | 'after'; gap: number } | null {
   const newStart = parseDate(startDate);
   const newEnd = addDays(newStart, days - 1);
   const partnerLogs = logs.filter((l) => l.partnerId === partnerId);
@@ -102,11 +108,14 @@ function findAdjacentLog(
     const existingStart = parseDate(log.startDate);
     const existingEnd = addDays(existingStart, log.periodLengthDays - 1);
 
-    if (diffInDays(newStart, existingEnd) === 1) {
-      return { log, side: 'after' };
+    const gapAfter = diffInDays(newStart, existingEnd);
+    if (gapAfter >= 1 && gapAfter <= AUTO_FILL_GAP) {
+      return { log, side: 'after', gap: gapAfter };
     }
-    if (diffInDays(existingStart, newEnd) === 1) {
-      return { log, side: 'before' };
+
+    const gapBefore = diffInDays(existingStart, newEnd);
+    if (gapBefore >= 1 && gapBefore <= AUTO_FILL_GAP) {
+      return { log, side: 'before', gap: gapBefore };
     }
   }
   return null;
@@ -168,8 +177,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, showOvulation: !state.showOvulation };
     case 'SET_APP_LOCK':
       return { ...state, appLockEnabled: action.payload };
+    case 'SET_MULTI_PROFILE':
+      return { ...state, multiProfileEnabled: action.payload };
     case 'SET_THEME_MODE':
       return { ...state, themeMode: action.payload };
+    case 'SET_ONBOARDING_COMPLETE':
+      return { ...state, onboardingComplete: action.payload };
     default:
       return state;
   }
@@ -183,11 +196,13 @@ const initialState: AppState = {
   showFertility: true,
   showOvulation: true,
   appLockEnabled: false,
+  multiProfileEnabled: false,
   themeMode: 'dark' as ThemeMode,
+  onboardingComplete: false,
 };
 
 type AppContextValue = AppState & {
-  addPartner: (partner: Omit<Partner, 'id'>) => void;
+  addPartner: (partner: Omit<Partner, 'id'>) => string;
   updatePartner: (partner: Partner) => void;
   deletePartner: (id: string) => void;
   setActivePartner: (id: string | null) => void;
@@ -199,7 +214,9 @@ type AppContextValue = AppState & {
   toggleFertility: () => void;
   toggleOvulation: () => void;
   setAppLock: (enabled: boolean) => void;
+  setMultiProfile: (enabled: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  setOnboardingComplete: (complete: boolean) => void;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -217,7 +234,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             periodLogs: s.periodLogs ?? [],
             activePartnerId: s.partners?.[0]?.id ?? null,
             appLockEnabled: s.appLockEnabled ?? false,
+            multiProfileEnabled: s.multiProfileEnabled ?? false,
             themeMode: 'dark' as ThemeMode,
+            onboardingComplete: s.onboardingComplete ?? false,
           },
         });
       }
@@ -225,15 +244,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.appLockEnabled) {
+    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.appLockEnabled || state.multiProfileEnabled || state.onboardingComplete) {
       saveState({
         partners: state.partners,
         periodLogs: state.periodLogs,
         appLockEnabled: state.appLockEnabled,
+        multiProfileEnabled: state.multiProfileEnabled,
         themeMode: state.themeMode,
+        onboardingComplete: state.onboardingComplete,
       });
     }
-  }, [state.partners, state.periodLogs, state.appLockEnabled, state.themeMode]);
+  }, [state.partners, state.periodLogs, state.appLockEnabled, state.multiProfileEnabled, state.themeMode, state.onboardingComplete]);
 
   const addPeriodLog = useCallback(
     (partnerId: string, startDate: string, days: number): AddPeriodResult => {
@@ -242,16 +263,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!check.ok) return check;
 
       if ('extended' in check && check.extended) {
-        const adj = findAdjacentLog(state.periodLogs, partnerId, startDate, days);
-        if (adj) {
-          const { log, side } = adj;
+        const nearby = findNearbyLog(state.periodLogs, partnerId, startDate, days);
+        if (nearby) {
+          const { log, side, gap } = nearby;
+          const gapDays = gap - 1;
           if (side === 'after') {
             dispatch({
               type: 'UPDATE_PERIOD_LOG',
               payload: {
                 id: log.id,
                 startDate: log.startDate,
-                periodLengthDays: log.periodLengthDays + days,
+                periodLengthDays: log.periodLengthDays + gapDays + days,
               },
             });
           } else {
@@ -260,7 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               payload: {
                 id: log.id,
                 startDate,
-                periodLengthDays: log.periodLengthDays + days,
+                periodLengthDays: days + gapDays + log.periodLengthDays,
               },
             });
           }
@@ -308,11 +330,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value: AppContextValue = {
     ...state,
-    addPartner: (p) =>
-      dispatch({
-        type: 'ADD_PARTNER',
-        payload: { ...p, id: `p-${Date.now()}-${Math.random().toString(36).slice(2)}` },
-      }),
+    addPartner: (p) => {
+      const id = `p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      dispatch({ type: 'ADD_PARTNER', payload: { ...p, id } });
+      return id;
+    },
     updatePartner: (p) => dispatch({ type: 'UPDATE_PARTNER', payload: p }),
     deletePartner: (id) => dispatch({ type: 'DELETE_PARTNER', payload: id }),
     setActivePartner: (id) => dispatch({ type: 'SET_ACTIVE_PARTNER', payload: id }),
@@ -324,7 +346,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleFertility: () => dispatch({ type: 'TOGGLE_FERTILITY' }),
     toggleOvulation: () => dispatch({ type: 'TOGGLE_OVULATION' }),
     setAppLock: (enabled: boolean) => dispatch({ type: 'SET_APP_LOCK', payload: enabled }),
+    setMultiProfile: (enabled: boolean) => dispatch({ type: 'SET_MULTI_PROFILE', payload: enabled }),
     setThemeMode: (mode: ThemeMode) => dispatch({ type: 'SET_THEME_MODE', payload: mode }),
+    setOnboardingComplete: (complete: boolean) => dispatch({ type: 'SET_ONBOARDING_COMPLETE', payload: complete }),
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

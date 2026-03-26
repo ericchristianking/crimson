@@ -12,8 +12,9 @@ import { CrimsonColors, Fonts } from '@/constants/theme';
 import { addMonths, toDateOnly, parseDate, addDays } from '@/src/utils/date';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CALENDAR_PADDING = 20;
-const DAY_SIZE = Math.floor((SCREEN_WIDTH - CALENDAR_PADDING * 2) / 7);
+const CARD_MARGIN = 20;
+const CALENDAR_PADDING = 10;
+const DAY_SIZE = Math.floor((SCREEN_WIDTH - CARD_MARGIN * 2 - CALENDAR_PADDING * 2) / 7);
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const PAST_MONTHS = 6;
 const FUTURE_MONTHS = 12;
@@ -25,7 +26,7 @@ const CIRCLE_SIZE = DAY_SIZE - 10;
 /** Opacity multiplier for non-current months */
 const DIM_OPACITY = 0.4;
 
-type MonthData = { key: string; year: number; month: number; isCurrent: boolean };
+type MonthData = { key: string; year: number; month: number };
 
 type Props = {
   predictions: Record<string, PredictedDayState>;
@@ -57,39 +58,26 @@ function getPhaseColor(
 ): PhaseColor {
   if (isLogged || isPeriod) return { bg: CrimsonColors.period,              text: '#fff' };
   if (isOv)                  return { bg: 'rgba(0,90,255,0.7)',             text: '#fff' };
-  if (isFert)                return { bg: 'rgba(10,158,163,0.7)',           text: '#fff' };
-  if (isPMS)                 return { bg: 'rgba(112,40,135,0.7)',           text: '#fff' };
+  if (isFert)                return { bg: 'rgba(12,136,150,0.7)',            text: '#fff' };
+  if (isPMS)                 return { bg: 'rgba(202,144,60,0.7)',           text: '#fff' };
   return null;
 }
 
 function generateMonths(): MonthData[] {
   const now = new Date();
-  const curYear = now.getFullYear();
-  const curMonth = now.getMonth();
   return Array.from({ length: PAST_MONTHS + FUTURE_MONTHS + 1 }, (_, i) => {
     const d = addMonths(now, i - PAST_MONTHS);
     return {
       key: `${d.getFullYear()}-${d.getMonth()}`,
       year: d.getFullYear(),
       month: d.getMonth(),
-      isCurrent: d.getFullYear() === curYear && d.getMonth() === curMonth,
     };
   });
-}
-
-function getLatestPeriodStart(logs: PeriodLog[]): string | null {
-  if (logs.length === 0) return null;
-  let latest = logs[0].startDate;
-  for (const l of logs) {
-    if (l.startDate > latest) latest = l.startDate;
-  }
-  return latest;
 }
 
 export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
   const months   = useMemo(generateMonths, []);
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
-  const latestPeriodStart = useMemo(() => getLatestPeriodStart(logs), [logs]);
 
   const monthHeights = useMemo(() =>
     months.map((m) => MONTH_HEADER_HEIGHT + WEEK_LABEL_HEIGHT + weekRowsForMonth(m.year, m.month) * ROW_HEIGHT + 8),
@@ -102,11 +90,10 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
   }, [monthHeights]);
 
   const renderMonth = useCallback(({ item }: { item: MonthData }) => {
-    const { year, month, isCurrent } = item;
+    const { year, month } = item;
     const total  = getDaysInMonth(year, month);
     const offset = getFirstDayOffset(year, month);
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    const dimStyle = isCurrent ? undefined : { opacity: DIM_OPACITY };
 
     const cells: React.ReactNode[] = Array.from({ length: offset }, (_, i) => (
       <View key={`e-${i}`} style={styles.dayCell} />
@@ -122,12 +109,12 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
         pred?.isPMS ?? false, pred?.isOvulationDay ?? false, pred?.isFertileWindow ?? false,
       );
 
-      const isPastCycle = phase && latestPeriodStart ? ds < latestPeriodStart : false;
+      const isFuturePrediction = phase && !isLogged && ds > todayStr;
 
       cells.push(
         <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.6}>
           {phase ? (
-            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, isPastCycle && { opacity: DIM_OPACITY }]}>
+            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, isFuturePrediction && { opacity: DIM_OPACITY }]}>
               <Text style={[styles.textPhase, { color: phase.text }]}>{day}</Text>
             </View>
           ) : isToday ? (
@@ -135,7 +122,7 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
               <Text style={styles.textToday}>{day}</Text>
             </View>
           ) : (
-            <Text style={[styles.textNormal, dimStyle]}>{day}</Text>
+            <Text style={[styles.textNormal, { opacity: DIM_OPACITY }]}>{day}</Text>
           )}
         </TouchableOpacity>,
       );

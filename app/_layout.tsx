@@ -16,9 +16,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { AppProvider, useApp } from '@/src/context/AppContext';
+import { PurchasesProvider } from '@/src/context/PurchasesContext';
+import { initializePurchases } from '@/src/services/purchases';
+
+// Initialize RevenueCat once, before any component mounts
+initializePurchases();
 import { ThemeSchemeProvider } from '@/src/context/ThemeContext';
 import { CRIMSON_LOGO } from '@/src/constants/backgrounds';
 import { Fonts } from '@/constants/theme';
+import OnboardingScreen from '@/app/onboarding';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,7 +33,7 @@ export const unstable_settings = {
 };
 
 function AppGate() {
-  const { appLockEnabled } = useApp();
+  const { appLockEnabled, onboardingComplete } = useApp();
   const [unlocked, setUnlocked] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
 
@@ -50,6 +56,10 @@ function AppGate() {
       authenticate();
     }
   }, [appLockEnabled, unlocked, authenticate]);
+
+  if (!onboardingComplete) {
+    return <OnboardingScreen />;
+  }
 
   if (appLockEnabled && !unlocked) {
     return (
@@ -96,12 +106,14 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <AppProvider>
-        <ThemeSchemeProvider value="dark">
-          <ThemeProvider value={DarkTheme}>
-            <AppGate />
-            <StatusBar style="light" />
-          </ThemeProvider>
-        </ThemeSchemeProvider>
+        <PurchasesProvider>
+          <ThemeSchemeProvider value="dark">
+            <ThemeProvider value={DarkTheme}>
+              <AppGate />
+              <StatusBar style="light" />
+            </ThemeProvider>
+          </ThemeSchemeProvider>
+        </PurchasesProvider>
       </AppProvider>
     </GestureHandlerRootView>
   );

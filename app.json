@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ericchristianking.crimson"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +25,14 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
+    },
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/19763c9c-d283-4113-9dc1-f907eda6b23e"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "plugins": [
       "expo-router",

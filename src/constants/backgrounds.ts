@@ -14,3 +14,6 @@ export const CALENDAR_BACKGROUND: ImageSourcePropType =
 
 export const CRIMSON_LOGO: ImageSourcePropType =
   require('@/assets/images/logo-white.png');
+
+export const CRIMSON_C: ImageSourcePropType =
+  require('@/assets/images/c.png');
