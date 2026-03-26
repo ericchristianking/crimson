@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { Partner, PeriodLog } from '@/src/types';
+import { Partner, PeriodLog, CycleEvent, EventType, EventCategory } from '@/src/types';
 import { parseDate, addDays, toDateOnly } from '@/src/utils/date';
 import { loadState, saveState } from '@/src/services/storage';
 
@@ -8,6 +8,7 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 type AppState = {
   partners: Partner[];
   periodLogs: PeriodLog[];
+  cycleEvents: CycleEvent[];
   activePartnerId: string | null;
   showPms: boolean;
   showFertility: boolean;
@@ -33,7 +34,10 @@ type Action =
   | { type: 'SET_APP_LOCK'; payload: boolean }
   | { type: 'SET_MULTI_PROFILE'; payload: boolean }
   | { type: 'SET_THEME_MODE'; payload: ThemeMode }
-  | { type: 'SET_ONBOARDING_COMPLETE'; payload: boolean };
+  | { type: 'SET_ONBOARDING_COMPLETE'; payload: boolean }
+  | { type: 'ADD_CYCLE_EVENT'; payload: CycleEvent }
+  | { type: 'REMOVE_CYCLE_EVENT'; payload: string }
+  | { type: 'CLEAR_DAY_EVENTS'; payload: { partnerId: string; date: string } };
 
 const MIN_CYCLE_GAP_DAYS = 21;
 
@@ -143,6 +147,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         partners: state.partners.filter((p) => p.id !== action.payload),
         periodLogs: state.periodLogs.filter((l) => l.partnerId !== action.payload),
+        cycleEvents: state.cycleEvents.filter((e) => e.partnerId !== action.payload),
         activePartnerId:
           state.activePartnerId === action.payload
             ? state.partners[0]?.id ?? null
@@ -183,6 +188,17 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, themeMode: action.payload };
     case 'SET_ONBOARDING_COMPLETE':
       return { ...state, onboardingComplete: action.payload };
+    case 'ADD_CYCLE_EVENT':
+      return { ...state, cycleEvents: [...state.cycleEvents, action.payload] };
+    case 'REMOVE_CYCLE_EVENT':
+      return { ...state, cycleEvents: state.cycleEvents.filter((e) => e.id !== action.payload) };
+    case 'CLEAR_DAY_EVENTS':
+      return {
+        ...state,
+        cycleEvents: state.cycleEvents.filter(
+          (e) => !(e.partnerId === action.payload.partnerId && e.date === action.payload.date),
+        ),
+      };
     default:
       return state;
   }
@@ -191,6 +207,7 @@ function reducer(state: AppState, action: Action): AppState {
 const initialState: AppState = {
   partners: [],
   periodLogs: [],
+  cycleEvents: [],
   activePartnerId: null,
   showPms: true,
   showFertility: true,
@@ -217,6 +234,10 @@ type AppContextValue = AppState & {
   setMultiProfile: (enabled: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setOnboardingComplete: (complete: boolean) => void;
+  addCycleEvent: (partnerId: string, date: string, eventType: EventType, category: EventCategory) => void;
+  removeCycleEvent: (eventId: string) => void;
+  toggleCycleEvent: (partnerId: string, date: string, eventType: EventType, category: EventCategory) => void;
+  getEventsForDate: (partnerId: string, date: string) => CycleEvent[];
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -232,6 +253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           payload: {
             partners: s.partners ?? [],
             periodLogs: s.periodLogs ?? [],
+            cycleEvents: (s.cycleEvents ?? []) as CycleEvent[],
             activePartnerId: s.partners?.[0]?.id ?? null,
             appLockEnabled: s.appLockEnabled ?? false,
             multiProfileEnabled: s.multiProfileEnabled ?? false,
@@ -244,17 +266,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.appLockEnabled || state.multiProfileEnabled || state.onboardingComplete) {
+    if (state.partners.length > 0 || state.periodLogs.length > 0 || state.cycleEvents.length > 0 || state.appLockEnabled || state.multiProfileEnabled || state.onboardingComplete) {
       saveState({
         partners: state.partners,
         periodLogs: state.periodLogs,
+        cycleEvents: state.cycleEvents,
         appLockEnabled: state.appLockEnabled,
         multiProfileEnabled: state.multiProfileEnabled,
         themeMode: state.themeMode,
         onboardingComplete: state.onboardingComplete,
       });
     }
-  }, [state.partners, state.periodLogs, state.appLockEnabled, state.multiProfileEnabled, state.themeMode, state.onboardingComplete]);
+  }, [state.partners, state.periodLogs, state.cycleEvents, state.appLockEnabled, state.multiProfileEnabled, state.themeMode, state.onboardingComplete]);
 
   const addPeriodLog = useCallback(
     (partnerId: string, startDate: string, days: number): AddPeriodResult => {
@@ -328,6 +351,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.periodLogs],
   );
 
+  const addCycleEvent = useCallback(
+    (partnerId: string, date: string, eventType: EventType, category: EventCategory) => {
+      const id = `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      dispatch({
+        type: 'ADD_CYCLE_EVENT',
+        payload: { id, partnerId, date, eventType, category, createdAt: Date.now() },
+      });
+    },
+    [],
+  );
+
+  const removeCycleEvent = useCallback((eventId: string) => {
+    dispatch({ type: 'REMOVE_CYCLE_EVENT', payload: eventId });
+  }, []);
+
+  const toggleCycleEvent = useCallback(
+    (partnerId: string, date: string, eventType: EventType, category: EventCategory) => {
+      const existing = state.cycleEvents.find(
+        (e) => e.partnerId === partnerId && e.date === date && e.eventType === eventType,
+      );
+      if (existing) {
+        dispatch({ type: 'REMOVE_CYCLE_EVENT', payload: existing.id });
+      } else {
+        const id = `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        dispatch({
+          type: 'ADD_CYCLE_EVENT',
+          payload: { id, partnerId, date, eventType, category, createdAt: Date.now() },
+        });
+      }
+    },
+    [state.cycleEvents],
+  );
+
+  const getEventsForDate = useCallback(
+    (partnerId: string, date: string) =>
+      state.cycleEvents.filter((e) => e.partnerId === partnerId && e.date === date),
+    [state.cycleEvents],
+  );
+
   const value: AppContextValue = {
     ...state,
     addPartner: (p) => {
@@ -349,6 +411,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMultiProfile: (enabled: boolean) => dispatch({ type: 'SET_MULTI_PROFILE', payload: enabled }),
     setThemeMode: (mode: ThemeMode) => dispatch({ type: 'SET_THEME_MODE', payload: mode }),
     setOnboardingComplete: (complete: boolean) => dispatch({ type: 'SET_ONBOARDING_COMPLETE', payload: complete }),
+    addCycleEvent,
+    removeCycleEvent,
+    toggleCycleEvent,
+    getEventsForDate,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

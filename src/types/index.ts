@@ -19,3 +19,28 @@ export type PredictedDayState = {
   isFertileWindow?: boolean;
   isOvulationDay?: boolean;
 };
+
+export type EventCategory = 'mood' | 'intimacy' | 'energy' | 'symptom';
+
+export type EventType =
+  | 'happy' | 'moody' | 'irritable' | 'sad'
+  | 'had_sex' | 'horny' | 'low_libido'
+  | 'high_energy' | 'low_energy' | 'tired'
+  | 'discomfort' | 'cravings';
+
+export type CycleEvent = {
+  id: string;
+  partnerId: string;
+  date: string;
+  eventType: EventType;
+  category: EventCategory;
+  createdAt: number;
+};
+
+export type PhasePattern = {
+  phase: 'period' | 'pms' | 'fertile' | 'ovulation' | 'regular';
+  eventType: EventType;
+  occurrences: number;
+  totalDaysInPhase: number;
+  percentage: number;
+};

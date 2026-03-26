@@ -6,9 +6,11 @@ import { CrimsonCalendar } from '@/src/components/CrimsonCalendar';
 import { LogPeriodModal } from '@/src/components/LogPeriodModal';
 import { RemovePeriodModal } from '@/src/components/RemovePeriodModal';
 import { PmsAdjustModal } from '@/src/components/PmsAdjustModal';
+import { DayActionSheet } from '@/src/components/DayActionSheet';
+import { LogEventModal } from '@/src/components/LogEventModal';
 import { OverlayToggles } from '@/src/components/OverlayToggles';
 import { parseDate, addDays, toDateOnly } from '@/src/utils/date';
-import { PeriodLog } from '@/src/types';
+import { PeriodLog, EventType, EventCategory } from '@/src/types';
 import { Colors, Fonts } from '@/constants/theme';
 import { CALENDAR_BACKGROUND } from '@/src/constants/backgrounds';
 
@@ -26,6 +28,7 @@ export default function CalendarScreen() {
   const {
     partners,
     periodLogs,
+    cycleEvents,
     activePartnerId,
     showPms,
     showFertility,
@@ -38,11 +41,15 @@ export default function CalendarScreen() {
     togglePms,
     toggleFertility,
     toggleOvulation,
+    toggleCycleEvent,
+    getEventsForDate,
   } = useApp();
 
   const [logModalDate, setLogModalDate] = useState<string | null>(null);
   const [editLog, setEditLog] = useState<PeriodLog | null>(null);
   const [showPmsModal, setShowPmsModal] = useState(false);
+  const [actionSheetDate, setActionSheetDate] = useState<string | null>(null);
+  const [eventModalDate, setEventModalDate] = useState<string | null>(null);
 
   const activePartner = useMemo(
     () => partners.find((p) => p.id === activePartnerId) ?? null,
@@ -64,6 +71,13 @@ export default function CalendarScreen() {
     [periodLogs, activePartnerId],
   );
 
+  const eventDates = useMemo(() => {
+    if (!activePartnerId) return new Set<string>();
+    return new Set(
+      cycleEvents.filter((e) => e.partnerId === activePartnerId).map((e) => e.date),
+    );
+  }, [cycleEvents, activePartnerId]);
+
   const maxLoggable = useMemo(() => toDateOnly(addDays(new Date(), 7)), []);
 
   const handleDayPress = useCallback(
@@ -73,16 +87,32 @@ export default function CalendarScreen() {
         setEditLog(log);
         return;
       }
-      const prediction = predictions[date];
-      if (prediction?.isPMS) {
-        setShowPmsModal(true);
+      if (date > maxLoggable) {
+        setEventModalDate(date);
         return;
       }
-      if (date > maxLoggable) return;
-      setLogModalDate(date);
+      setActionSheetDate(date);
     },
-    [periodLogs, predictions, maxLoggable],
+    [periodLogs, maxLoggable],
   );
+
+  const handleActionLogPeriod = useCallback(() => {
+    if (!actionSheetDate) return;
+    const prediction = predictions[actionSheetDate];
+    if (prediction?.isPMS) {
+      setActionSheetDate(null);
+      setShowPmsModal(true);
+      return;
+    }
+    setLogModalDate(actionSheetDate);
+    setActionSheetDate(null);
+  }, [actionSheetDate, predictions]);
+
+  const handleActionLogEvent = useCallback(() => {
+    if (!actionSheetDate) return;
+    setEventModalDate(actionSheetDate);
+    setActionSheetDate(null);
+  }, [actionSheetDate]);
 
   const handleLogConfirm = useCallback(
     (date: string, days: number) => {
@@ -100,6 +130,19 @@ export default function CalendarScreen() {
     [activePartnerId, forceAddPeriodLog],
   );
 
+  const handleToggleEvent = useCallback(
+    (eventType: EventType, category: EventCategory) => {
+      if (!activePartnerId || !eventModalDate) return;
+      toggleCycleEvent(activePartnerId, eventModalDate, eventType, category);
+    },
+    [activePartnerId, eventModalDate, toggleCycleEvent],
+  );
+
+  const eventModalEvents = useMemo(
+    () => (activePartnerId && eventModalDate ? getEventsForDate(activePartnerId, eventModalDate) : []),
+    [activePartnerId, eventModalDate, getEventsForDate],
+  );
+
   return (
     <ImageBackground
       source={CALENDAR_BACKGROUND}
@@ -115,6 +158,7 @@ export default function CalendarScreen() {
           <CrimsonCalendar
             predictions={predictions}
             logs={partnerLogs}
+            eventDates={eventDates}
             onDayPress={handleDayPress}
           />
         </View>
@@ -128,12 +172,31 @@ export default function CalendarScreen() {
         />
       </View>
 
+      {actionSheetDate != null && (
+        <DayActionSheet
+          date={actionSheetDate}
+          hasEvents={eventDates.has(actionSheetDate)}
+          onLogPeriod={handleActionLogPeriod}
+          onLogEvent={handleActionLogEvent}
+          onDismiss={() => setActionSheetDate(null)}
+        />
+      )}
+
       {logModalDate != null && (
         <LogPeriodModal
           date={logModalDate}
           onConfirm={handleLogConfirm}
           onForceReplace={handleForceReplace}
           onDismiss={() => setLogModalDate(null)}
+        />
+      )}
+
+      {eventModalDate != null && (
+        <LogEventModal
+          date={eventModalDate}
+          events={eventModalEvents}
+          onToggle={handleToggleEvent}
+          onDismiss={() => setEventModalDate(null)}
         />
       )}
 
@@ -147,6 +210,11 @@ export default function CalendarScreen() {
           onRemove={() => {
             removePeriodLog(editLog.id);
             setEditLog(null);
+          }}
+          onLogEvent={() => {
+            const date = editLog.startDate;
+            setEditLog(null);
+            setEventModalDate(date);
           }}
           onDismiss={() => setEditLog(null)}
         />

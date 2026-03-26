@@ -31,6 +31,7 @@ type MonthData = { key: string; year: number; month: number };
 type Props = {
   predictions: Record<string, PredictedDayState>;
   logs: PeriodLog[];
+  eventDates?: Set<string>;
   onDayPress: (date: string) => void;
 };
 
@@ -75,7 +76,7 @@ function generateMonths(): MonthData[] {
   });
 }
 
-export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
+export function CrimsonCalendar({ predictions, logs, eventDates, onDayPress }: Props) {
   const months   = useMemo(generateMonths, []);
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
 
@@ -110,6 +111,7 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
       );
 
       const isFuturePrediction = phase && !isLogged && ds > todayStr;
+      const hasEvent = eventDates?.has(ds);
 
       cells.push(
         <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.6}>
@@ -124,6 +126,7 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
           ) : (
             <Text style={[styles.textNormal, { opacity: DIM_OPACITY }]}>{day}</Text>
           )}
+          {hasEvent && <View style={styles.eventDot} />}
         </TouchableOpacity>,
       );
     }
@@ -143,7 +146,7 @@ export function CrimsonCalendar({ predictions, logs, onDayPress }: Props) {
         <View style={styles.grid}>{cells}</View>
       </View>
     );
-  }, [predictions, logs, todayStr, onDayPress]);
+  }, [predictions, logs, eventDates, todayStr, onDayPress]);
 
   return (
     <FlatList
@@ -187,4 +190,13 @@ const styles = StyleSheet.create({
   textNormal: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.75)', fontFamily: Fonts.medium },
   textPhase:  { fontSize: 14, fontWeight: '400', fontFamily: Fonts.regular },
   textToday:  { fontSize: 15, fontWeight: '400', color: '#FFFFFF', fontFamily: Fonts.regular },
+  eventDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+    position: 'absolute',
+    bottom: 2,
+  },
 });

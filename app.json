@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Crimson",
-    "slug": "crimson",
+    "slug": "period",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ericchristianking.crimson"
+      "bundleIdentifier": "com.ericchristianking.crimson",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

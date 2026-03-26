@@ -18,10 +18,11 @@ type Props = {
   log: PeriodLog;
   onSave: (days: number) => void;
   onRemove: () => void;
+  onLogEvent?: () => void;
   onDismiss: () => void;
 };
 
-export function RemovePeriodModal({ log, onSave, onRemove, onDismiss }: Props) {
+export function RemovePeriodModal({ log, onSave, onRemove, onLogEvent, onDismiss }: Props) {
   const [days, setDays] = useState(log.periodLengthDays);
 
   const formatted = parseDate(log.startDate).toLocaleDateString('en-US', {
@@ -68,6 +69,12 @@ export function RemovePeriodModal({ log, onSave, onRemove, onDismiss }: Props) {
           >
             <Text style={styles.saveBtnText}>Save</Text>
           </TouchableOpacity>
+
+          {onLogEvent && (
+            <TouchableOpacity style={styles.logEventBtn} onPress={onLogEvent}>
+              <Text style={styles.logEventText}>📝 Log Event</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.deleteBtn} onPress={onRemove}>
             <Text style={styles.deleteBtnText}>Delete period</Text>
@@ -130,6 +137,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  logEventBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  logEventText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+    fontWeight: '500',
+  },
   deleteBtn: {
     alignItems: 'center',
     paddingVertical: 10,

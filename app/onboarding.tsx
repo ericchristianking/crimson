@@ -222,10 +222,10 @@ function HookScreen({ onContinue }: { onContinue: () => void }) {
         </Text>
         <View style={styles.spacerLg} />
         <View style={styles.bulletList}>
+          <BulletRow emoji="🧠" text="Learn her cycle and patterns" />
+          <BulletRow emoji="📅" text="Plan the right moments with confidence" />
           <BulletRow emoji="🔥" text="Know when she's most into it" />
-          <BulletRow emoji="📅" text="Stop planning around the wrong dates" />
-          <BulletRow emoji="⚡" text="Dodge the moments that cause friction" />
-          <BulletRow emoji="💬" text="Read the room before you walk in" />
+          <BulletRow emoji="🧭" text="Know when to step up, and when to give space" />
         </View>
         <View style={styles.spacerLg} />
         <Text style={styles.footerLarge}>One cycle. Four phases. Each one changes everything.</Text>

@@ -1,13 +1,17 @@
-import React, { useMemo } from 'react';
-import { View, Text, Image, ImageBackground, StyleSheet, ScrollView } from 'react-native';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, Image, ImageBackground, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
+import { buildPatterns, getTopInsights, countCompleteCycles } from '@/src/services/patternAnalysis';
 import { PartnerSwitcher } from '@/src/components/PartnerSwitcher';
+import { LogEventModal } from '@/src/components/LogEventModal';
 import { buildTodayInfo } from '@/src/utils/todayInfo';
+import { toDateOnly } from '@/src/utils/date';
 import { Colors, CrimsonColors, Fonts } from '@/constants/theme';
 import { PHASE_BACKGROUNDS, CRIMSON_LOGO } from '@/src/constants/backgrounds';
 import type { PhaseKey } from '@/src/utils/todayInfo';
+import type { EventType, EventCategory } from '@/src/types';
 
 const PHASE_ACCENT: Record<PhaseKey, string> = {
   regular: 'rgba(255,255,255,0.7)',
@@ -22,13 +26,18 @@ export default function HomeScreen() {
   const {
     partners,
     periodLogs,
+    cycleEvents,
     activePartnerId,
     showPms,
     showFertility,
     showOvulation,
     multiProfileEnabled,
     setActivePartner,
+    toggleCycleEvent,
+    getEventsForDate,
   } = useApp();
+
+  const [showEventModal, setShowEventModal] = useState(false);
 
   const activePartner = useMemo(
     () => partners.find((p) => p.id === activePartnerId) ?? null,
@@ -51,6 +60,38 @@ export default function HomeScreen() {
   );
 
   const todayInfo = useMemo(() => buildTodayInfo(predictions, partnerLogs), [predictions, partnerLogs]);
+
+  const partnerEvents = useMemo(
+    () => (activePartnerId ? cycleEvents.filter((e) => e.partnerId === activePartnerId) : []),
+    [cycleEvents, activePartnerId],
+  );
+
+  const completeCycles = useMemo(
+    () => (activePartnerId ? countCompleteCycles(periodLogs, activePartnerId) : 0),
+    [periodLogs, activePartnerId],
+  );
+
+  const patterns = useMemo(
+    () => (activePartnerId ? buildPatterns(cycleEvents, predictions, periodLogs, activePartnerId) : []),
+    [cycleEvents, predictions, periodLogs, activePartnerId],
+  );
+
+  const insights = useMemo(() => getTopInsights(patterns), [patterns]);
+
+  const todayStr = useMemo(() => toDateOnly(new Date()), []);
+
+  const todayEvents = useMemo(
+    () => (activePartnerId ? getEventsForDate(activePartnerId, todayStr) : []),
+    [activePartnerId, todayStr, getEventsForDate],
+  );
+
+  const handleToggleEvent = useCallback(
+    (eventType: EventType, category: EventCategory) => {
+      if (!activePartnerId) return;
+      toggleCycleEvent(activePartnerId, todayStr, eventType, category);
+    },
+    [activePartnerId, todayStr, toggleCycleEvent],
+  );
 
   const bgSource = PHASE_BACKGROUNDS[todayInfo.phaseKey] ?? PHASE_BACKGROUNDS.regular;
   const accent = PHASE_ACCENT[todayInfo.phaseKey];
@@ -111,8 +152,75 @@ export default function HomeScreen() {
               {todayInfo.fertileCountdown ?? 'Not enough data'}
             </Text>
           </View>
+
+          {/* Card 4 – Daily Log / Cycle Patterns */}
+          <View style={styles.card}>
+            {partnerEvents.length === 0 ? (
+              <>
+                <Text style={styles.cardLabel}>Daily Log</Text>
+                <Text style={styles.patternHint}>
+                  Track moods & events to discover patterns in her cycle.
+                </Text>
+                <TouchableOpacity
+                  style={styles.logTodayBtn}
+                  onPress={() => setShowEventModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.logTodayText}>Log Today</Text>
+                </TouchableOpacity>
+              </>
+            ) : completeCycles < 3 || insights.length === 0 ? (
+              <>
+                <Text style={styles.cardLabel}>Daily Log</Text>
+                <Text style={styles.patternStats}>
+                  {partnerEvents.length} event{partnerEvents.length !== 1 ? 's' : ''} logged
+                  {completeCycles > 0
+                    ? ` across ${completeCycles} cycle${completeCycles !== 1 ? 's' : ''}`
+                    : ''}
+                </Text>
+                <Text style={styles.patternHint}>
+                  {completeCycles < 3
+                    ? 'Patterns unlock after 3 cycles. Keep logging!'
+                    : 'Keep logging to strengthen patterns.'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.logTodayBtn}
+                  onPress={() => setShowEventModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.logTodayText}>Log Today</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.cardLabel}>Cycle Patterns</Text>
+                {insights.map((insight, i) => (
+                  <Text key={i} style={styles.insightLine}>{insight}</Text>
+                ))}
+                <Text style={styles.patternFooter}>
+                  Based on {partnerEvents.length} events over {completeCycles} cycle{completeCycles !== 1 ? 's' : ''}
+                </Text>
+                <TouchableOpacity
+                  style={styles.logTodayBtn}
+                  onPress={() => setShowEventModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.logTodayText}>Log Today</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
       </ScrollView>
+
+      {showEventModal && (
+        <LogEventModal
+          date={todayStr}
+          events={todayEvents}
+          onToggle={handleToggleEvent}
+          onDismiss={() => setShowEventModal(false)}
+        />
+      )}
     </ImageBackground>
   );
 }
@@ -179,5 +287,47 @@ const styles = StyleSheet.create({
     color: '#F5F5F7',
     marginTop: 2,
     fontFamily: Fonts.regular,
+  },
+  patternHint: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    fontFamily: Fonts.regular,
+    marginTop: 4,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  patternStats: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#F5F5F7',
+    fontFamily: Fonts.medium,
+    marginTop: 4,
+  },
+  insightLine: {
+    fontSize: 15,
+    color: '#F5F5F7',
+    fontFamily: Fonts.regular,
+    marginTop: 6,
+    lineHeight: 22,
+  },
+  patternFooter: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    fontFamily: Fonts.regular,
+    marginTop: 12,
+  },
+  logTodayBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  logTodayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F5F5F7',
+    fontFamily: Fonts.semiBold,
   },
 });
