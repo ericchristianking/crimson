@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, AppState } from 'react-native';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import {
   useFonts,
   DMSans_400Regular,
@@ -36,26 +36,68 @@ function AppGate() {
   const { appLockEnabled, onboardingComplete } = useApp();
   const [unlocked, setUnlocked] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
+  const authenticatingRef = useRef(false);
+  const needsUnlockRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+  const overlayOpacity = useSharedValue(0);
 
   const authenticate = useCallback(async () => {
+    authenticatingRef.current = true;
     setAuthFailed(false);
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Unlock Crimson',
       fallbackLabel: 'Use passcode',
       disableDeviceFallback: false,
     });
+    authenticatingRef.current = false;
     if (result.success) {
+      needsUnlockRef.current = false;
       setUnlocked(true);
+      overlayOpacity.value = 0;
     } else {
       setAuthFailed(true);
     }
-  }, []);
+  }, [overlayOpacity]);
 
   useEffect(() => {
     if (appLockEnabled && !unlocked) {
       authenticate();
     }
   }, [appLockEnabled, unlocked, authenticate]);
+
+  useEffect(() => {
+    if (appLockEnabled) return;
+
+    needsUnlockRef.current = false;
+    authenticatingRef.current = false;
+    setAuthFailed(false);
+    setUnlocked(true);
+    overlayOpacity.value = 0;
+  }, [appLockEnabled, overlayOpacity]);
+
+  useEffect(() => {
+    if (!appLockEnabled) return;
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if (prev === 'active' && nextState !== 'active' && !authenticatingRef.current) {
+        needsUnlockRef.current = true;
+        overlayOpacity.value = 1;
+      } else if (nextState === 'active' && !authenticatingRef.current) {
+        if (needsUnlockRef.current) {
+          setUnlocked(false);
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, [appLockEnabled, overlayOpacity]);
+
+  const privacyStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   if (!onboardingComplete) {
     return <OnboardingScreen />;
@@ -75,17 +117,27 @@ function AppGate() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="partner-form"
-        options={{ presentation: 'modal', headerShown: false }}
-      />
-      <Stack.Screen
-        name="article"
-        options={{ headerShown: false }}
-      />
-    </Stack>
+    <>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="partner-form"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen
+          name="article"
+          options={{ headerShown: false }}
+        />
+      </Stack>
+      {appLockEnabled && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, lockStyles.container, privacyStyle]}
+          pointerEvents="none"
+        >
+          <Image source={CRIMSON_LOGO} style={lockStyles.logo} resizeMode="contain" />
+        </Animated.View>
+      )}
+    </>
   );
 }
 

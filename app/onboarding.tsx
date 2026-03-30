@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -858,33 +859,41 @@ function PaywallScreen({
   onComplete: () => void;
   onSkip: () => void;
 }) {
-  const { presentPaywallIfNeeded, restorePurchases } = usePurchases();
+  const { presentPaywallIfNeeded } = usePurchases();
+  const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const presented = useRef(false);
 
-  const handleUnlock = async () => {
+  const showPaywall = useCallback(async () => {
     setBusy(true);
+    setDismissed(false);
     const result = await presentPaywallIfNeeded();
     setBusy(false);
     switch (result) {
       case PAYWALL_RESULT.PURCHASED:
       case PAYWALL_RESULT.RESTORED:
-      case PAYWALL_RESULT.NOT_PRESENTED: // already subscribed
+      case PAYWALL_RESULT.NOT_PRESENTED:
         onComplete();
         break;
       default:
-        // CANCELLED or ERROR — stay on screen, let user try again or skip
+        setDismissed(true);
         break;
     }
-  };
+  }, [presentPaywallIfNeeded, onComplete]);
 
-  const handleRestore = async () => {
-    setBusy(true);
-    const info = await restorePurchases();
-    setBusy(false);
-    if (info?.entitlements.active['Crimson Pro']) {
-      onComplete();
-    }
-  };
+  useEffect(() => {
+    if (presented.current) return;
+    presented.current = true;
+    showPaywall();
+  }, [showPaywall]);
+
+  if (!dismissed) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="rgba(255,255,255,0.5)" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.centered}>
@@ -892,17 +901,8 @@ function PaywallScreen({
       <View style={styles.spacerMd} />
       <Text style={styles.sub}>Full predictions, multiple profiles, and complete calendar access.</Text>
       <View style={styles.spacerXl} />
-      <View style={styles.paywallCard}>
-        <Text style={styles.paywallPrice}>$4.99 / month</Text>
-        <Text style={styles.paywallTrial}>7-day free trial</Text>
-      </View>
-      <View style={styles.spacerLg} />
-      <CTAButton label={busy ? 'Loading…' : 'Start free trial'} onPress={handleUnlock} disabled={busy} />
+      <CTAButton label={busy ? 'Loading…' : 'Try again'} onPress={showPaywall} disabled={busy} />
       <View style={styles.spacerMd} />
-      <TouchableOpacity onPress={handleRestore} activeOpacity={0.7} disabled={busy}>
-        <Text style={styles.secondaryLink}>Restore purchases</Text>
-      </TouchableOpacity>
-      <View style={styles.spacerSm} />
       <TouchableOpacity onPress={onSkip} activeOpacity={0.7} disabled={busy}>
         <Text style={[styles.secondaryLink, { opacity: 0.4, fontSize: 14 }]}>Maybe later</Text>
       </TouchableOpacity>
@@ -1216,18 +1216,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.42)',
     lineHeight: 20,
   },
-
-  // Paywall
-  paywallCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 18,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: CrimsonColors.primary,
-  },
-  paywallPrice: { fontSize: 30, fontFamily: Fonts.bold, color: '#FFFFFF' },
-  paywallTrial: { fontSize: 15, fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.55)', marginTop: 8 },
 
   // CTA
   ctaBtn: { backgroundColor: CrimsonColors.primary, paddingVertical: 18, borderRadius: 14, alignItems: 'center' },

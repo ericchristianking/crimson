@@ -10,7 +10,7 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { ENTITLEMENT_ID } from '@/src/services/purchases';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type { PAYWALL_RESULT };
+export { PAYWALL_RESULT };
 
 type PurchasesContextValue = {
   /** True when the user has an active "Crimson Pro" entitlement */
