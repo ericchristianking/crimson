@@ -3,15 +3,22 @@ import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity } from 'reac
 import { Fonts, CrimsonColors } from '@/constants/theme';
 import { parseDate } from '@/src/utils/date';
 
+export type DayStatus = 'empty' | 'autofilled' | 'confirmed';
+
 type Props = {
   date: string;
+  dayStatus: DayStatus;
   hasEvents: boolean;
   onLogPeriod: () => void;
   onLogEvent: () => void;
+  onRemove: () => void;
   onDismiss: () => void;
 };
 
-export function DayActionSheet({ date, hasEvents, onLogPeriod, onLogEvent, onDismiss }: Props) {
+export function DayActionSheet({
+  date, dayStatus, hasEvents,
+  onLogPeriod, onLogEvent, onRemove, onDismiss,
+}: Props) {
   const formatted = parseDate(date).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
@@ -23,21 +30,73 @@ export function DayActionSheet({ date, hasEvents, onLogPeriod, onLogEvent, onDis
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>{formatted}</Text>
 
-          <TouchableOpacity style={styles.option} onPress={onLogPeriod} activeOpacity={0.7}>
-            <Text style={styles.optionEmoji}>🩸</Text>
-            <View style={styles.optionTextWrap}>
-              <Text style={styles.optionLabel}>Log Period</Text>
-              <Text style={styles.optionHint}>Mark menstruation start</Text>
-            </View>
-          </TouchableOpacity>
+          {dayStatus === 'empty' && (
+            <>
+              <TouchableOpacity style={styles.option} onPress={onLogPeriod} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>🩸</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionLabel}>Period</Text>
+                  <Text style={styles.optionHint}>Log period start</Text>
+                </View>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.option} onPress={onLogEvent} activeOpacity={0.7}>
-            <Text style={styles.optionEmoji}>📝</Text>
-            <View style={styles.optionTextWrap}>
-              <Text style={styles.optionLabel}>{hasEvents ? 'Edit Events' : 'Log Event'}</Text>
-              <Text style={styles.optionHint}>Mood, intimacy, energy & more</Text>
-            </View>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.option} onPress={onLogEvent} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>📝</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionLabel}>{hasEvents ? 'Edit Events' : 'Log Event'}</Text>
+                  <Text style={styles.optionHint}>Mood, intimacy, energy & more</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {dayStatus === 'autofilled' && (
+            <>
+              <TouchableOpacity style={styles.option} onPress={onLogPeriod} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>🩸</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionLabel}>Log Period</Text>
+                  <Text style={styles.optionHint}>Confirm this day</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.option} onPress={onRemove} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>🗑️</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={[styles.optionLabel, styles.destructive]}>Remove Day</Text>
+                  <Text style={styles.optionHint}>Remove this day from period</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.option} onPress={onLogEvent} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>📝</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionLabel}>{hasEvents ? 'Edit Events' : 'Log Event'}</Text>
+                  <Text style={styles.optionHint}>Mood, intimacy, energy & more</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {dayStatus === 'confirmed' && (
+            <>
+              <TouchableOpacity style={styles.option} onPress={onRemove} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>🗑️</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={[styles.optionLabel, styles.destructive]}>Remove Day</Text>
+                  <Text style={styles.optionHint}>Remove this day from period</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.option} onPress={onLogEvent} activeOpacity={0.7}>
+                <Text style={styles.optionEmoji}>📝</Text>
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionLabel}>{hasEvents ? 'Edit Events' : 'Log Event'}</Text>
+                  <Text style={styles.optionHint}>Mood, intimacy, energy & more</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity style={styles.cancelBtn} onPress={onDismiss}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -93,6 +152,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F5F5F7',
     fontFamily: Fonts.semiBold,
+  },
+  destructive: {
+    color: '#DC2626',
   },
   optionHint: {
     fontSize: 13,

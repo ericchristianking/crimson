@@ -3,10 +3,10 @@ import { View, ImageBackground, StyleSheet, Text } from 'react-native';
 import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
 import { CrimsonCalendar } from '@/src/components/CrimsonCalendar';
-import { LogPeriodModal } from '@/src/components/LogPeriodModal';
-import { RemovePeriodModal } from '@/src/components/RemovePeriodModal';
+import { ReplacePeriodModal } from '@/src/components/ReplacePeriodModal';
 import { PmsAdjustModal } from '@/src/components/PmsAdjustModal';
-import { DayActionSheet } from '@/src/components/DayActionSheet';
+import { DayActionSheet, DayStatus } from '@/src/components/DayActionSheet';
+import { PhaseInfoPopup } from '@/src/components/PhaseInfoPopup';
 import { LogEventModal } from '@/src/components/LogEventModal';
 import { OverlayToggles } from '@/src/components/OverlayToggles';
 import { parseDate, addDays, toDateOnly } from '@/src/utils/date';
@@ -33,10 +33,10 @@ export default function CalendarScreen() {
     showPms,
     showFertility,
     showOvulation,
-    addPeriodLog,
-    forceAddPeriodLog,
-    removePeriodLog,
-    updatePeriodLog,
+    logPeriodStart,
+    forceReplacePeriod,
+    confirmDay,
+    removeDayFromPeriod,
     updatePartner,
     togglePms,
     toggleFertility,
@@ -45,11 +45,13 @@ export default function CalendarScreen() {
     getEventsForDate,
   } = useApp();
 
-  const [logModalDate, setLogModalDate] = useState<string | null>(null);
-  const [editLog, setEditLog] = useState<PeriodLog | null>(null);
-  const [showPmsModal, setShowPmsModal] = useState(false);
   const [actionSheetDate, setActionSheetDate] = useState<string | null>(null);
+  const [actionSheetLog, setActionSheetLog] = useState<PeriodLog | null>(null);
+  const [actionSheetStatus, setActionSheetStatus] = useState<DayStatus>('empty');
+  const [replacePrompt, setReplacePrompt] = useState<{ date: string; existingLogId: string } | null>(null);
+  const [showPmsModal, setShowPmsModal] = useState(false);
   const [eventModalDate, setEventModalDate] = useState<string | null>(null);
+  const [phasePopupDate, setPhasePopupDate] = useState<string | null>(null);
 
   const activePartner = useMemo(
     () => partners.find((p) => p.id === activePartnerId) ?? null,
@@ -78,35 +80,53 @@ export default function CalendarScreen() {
     );
   }, [cycleEvents, activePartnerId]);
 
-  const maxLoggable = useMemo(() => toDateOnly(addDays(new Date(), 7)), []);
+  const todayStr = useMemo(() => toDateOnly(new Date()), []);
 
   const handleDayPress = useCallback(
     (date: string) => {
-      const log = getLogContainingDate(periodLogs, date);
+      const log = getLogContainingDate(partnerLogs, date);
       if (log) {
-        setEditLog(log);
+        const isConfirmed = (log.confirmedDays ?? []).includes(date);
+        setActionSheetDate(date);
+        setActionSheetLog(log);
+        setActionSheetStatus(isConfirmed ? 'confirmed' : 'autofilled');
         return;
       }
-      if (date > maxLoggable) {
-        setEventModalDate(date);
+
+      const isFuture = date > todayStr;
+
+      if (isFuture) {
+        const pred = predictions[date];
+        if (pred && (pred.isPeriod || pred.isPMS || pred.isFertileWindow || pred.isOvulationDay)) {
+          setPhasePopupDate(date);
+        }
         return;
       }
+
       setActionSheetDate(date);
+      setActionSheetLog(null);
+      setActionSheetStatus('empty');
     },
-    [periodLogs, maxLoggable],
+    [partnerLogs, predictions, todayStr],
   );
 
   const handleActionLogPeriod = useCallback(() => {
-    if (!actionSheetDate) return;
-    const prediction = predictions[actionSheetDate];
-    if (prediction?.isPMS) {
+    if (!actionSheetDate || !activePartnerId) return;
+
+    if (actionSheetStatus === 'autofilled' && actionSheetLog) {
+      confirmDay(actionSheetLog.id, actionSheetDate);
       setActionSheetDate(null);
-      setShowPmsModal(true);
       return;
     }
-    setLogModalDate(actionSheetDate);
-    setActionSheetDate(null);
-  }, [actionSheetDate, predictions]);
+
+    const result = logPeriodStart(activePartnerId, actionSheetDate);
+    if (result.ok) {
+      setActionSheetDate(null);
+    } else if (result.reason === 'tooClose' && 'existingLogId' in result) {
+      setActionSheetDate(null);
+      setReplacePrompt({ date: actionSheetDate, existingLogId: result.existingLogId });
+    }
+  }, [actionSheetDate, actionSheetStatus, actionSheetLog, activePartnerId, logPeriodStart, confirmDay]);
 
   const handleActionLogEvent = useCallback(() => {
     if (!actionSheetDate) return;
@@ -114,21 +134,17 @@ export default function CalendarScreen() {
     setActionSheetDate(null);
   }, [actionSheetDate]);
 
-  const handleLogConfirm = useCallback(
-    (date: string, days: number) => {
-      if (!activePartnerId) return { ok: false as const, reason: 'No partner selected.' };
-      return addPeriodLog(activePartnerId, date, days);
-    },
-    [activePartnerId, addPeriodLog],
-  );
+  const handleRemove = useCallback(() => {
+    if (!actionSheetLog || !actionSheetDate) return;
+    removeDayFromPeriod(actionSheetLog.id, actionSheetDate);
+    setActionSheetDate(null);
+  }, [actionSheetLog, actionSheetDate, removeDayFromPeriod]);
 
-  const handleForceReplace = useCallback(
-    (date: string, days: number, replaceLogId: string) => {
-      if (!activePartnerId) return;
-      forceAddPeriodLog(activePartnerId, date, days, replaceLogId);
-    },
-    [activePartnerId, forceAddPeriodLog],
-  );
+  const handleReplace = useCallback(() => {
+    if (!replacePrompt || !activePartnerId) return;
+    forceReplacePeriod(activePartnerId, replacePrompt.date, replacePrompt.existingLogId);
+    setReplacePrompt(null);
+  }, [replacePrompt, activePartnerId, forceReplacePeriod]);
 
   const handleToggleEvent = useCallback(
     (eventType: EventType, category: EventCategory) => {
@@ -175,19 +191,20 @@ export default function CalendarScreen() {
       {actionSheetDate != null && (
         <DayActionSheet
           date={actionSheetDate}
+          dayStatus={actionSheetStatus}
           hasEvents={eventDates.has(actionSheetDate)}
           onLogPeriod={handleActionLogPeriod}
           onLogEvent={handleActionLogEvent}
+          onRemove={handleRemove}
           onDismiss={() => setActionSheetDate(null)}
         />
       )}
 
-      {logModalDate != null && (
-        <LogPeriodModal
-          date={logModalDate}
-          onConfirm={handleLogConfirm}
-          onForceReplace={handleForceReplace}
-          onDismiss={() => setLogModalDate(null)}
+      {replacePrompt != null && (
+        <ReplacePeriodModal
+          date={replacePrompt.date}
+          onReplace={handleReplace}
+          onDismiss={() => setReplacePrompt(null)}
         />
       )}
 
@@ -200,23 +217,16 @@ export default function CalendarScreen() {
         />
       )}
 
-      {editLog != null && (
-        <RemovePeriodModal
-          log={editLog}
-          onSave={(days) => {
-            updatePeriodLog(editLog.id, days);
-            setEditLog(null);
-          }}
-          onRemove={() => {
-            removePeriodLog(editLog.id);
-            setEditLog(null);
-          }}
-          onLogEvent={() => {
-            const date = editLog.startDate;
-            setEditLog(null);
-            setEventModalDate(date);
-          }}
-          onDismiss={() => setEditLog(null)}
+      {phasePopupDate != null && predictions[phasePopupDate] && (
+        <PhaseInfoPopup
+          date={phasePopupDate}
+          prediction={predictions[phasePopupDate]}
+          onChangePms={
+            predictions[phasePopupDate]?.isPMS
+              ? () => { setPhasePopupDate(null); setShowPmsModal(true); }
+              : undefined
+          }
+          onDismiss={() => setPhasePopupDate(null)}
         />
       )}
 

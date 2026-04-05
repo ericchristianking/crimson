@@ -49,8 +49,6 @@ const PHASE_ACCENT: Record<PhaseKey, string> = {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const PRESET_COLORS = ['#F5D69D', '#ED2F17', '#9D0615', '#702887', '#005AFF', '#00AEBF'];
-const DURATION_OPTIONS = [3, 4, 5, 6, 7];
-
 type Step =
   | 'hook'
   | 'pain'
@@ -68,7 +66,7 @@ type Step =
   | 'paywall';
 
 export default function OnboardingScreen() {
-  const { addPartner, addPeriodLog, setOnboardingComplete, setActivePartner, setMultiProfile } = useApp();
+  const { addPartner, logPeriodStart, setOnboardingComplete, setActivePartner, setMultiProfile } = useApp();
 
   const [step, setStep] = useState<Step>('hook');
   const [useCaseChoice, setUseCaseChoice] = useState<'single' | 'multiple' | null>(null);
@@ -77,7 +75,6 @@ export default function OnboardingScreen() {
   const [profileIconColor, setProfileIconColor] = useState(PRESET_COLORS[0]);
   const [createdPartnerId, setCreatedPartnerId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [periodDays, setPeriodDays] = useState(5);
   const [isEstimated, setIsEstimated] = useState(false);
   const [proxyQ1Answer, setProxyQ1Answer] = useState<string | null>(null);
   const [proxyQ2Answer, setProxyQ2Answer] = useState<string | null>(null);
@@ -104,19 +101,17 @@ export default function OnboardingScreen() {
     goTo('periodQuestion');
   }, [profileName, profileIconKey, profileIconColor, useCaseChoice, addPartner, setActivePartner, setMultiProfile, goTo]);
 
-  const handlePeriodLog = useCallback((date: string, days: number) => {
+  const handlePeriodLog = useCallback((date: string) => {
     if (!createdPartnerId) return;
     setIsEstimated(false);
     setSelectedDate(date);
-    setPeriodDays(days);
-    addPeriodLog(createdPartnerId, date, days);
+    logPeriodStart(createdPartnerId, date);
     goTo('calculating');
-  }, [createdPartnerId, addPeriodLog, goTo]);
+  }, [createdPartnerId, logPeriodStart, goTo]);
 
   const handleProxySubmit = useCallback(() => {
     setIsEstimated(true);
     if (proxyQ2Answer === 'Genuinely no idea') {
-      // No usable date — skip period log, todayInfo will be null
       goTo('calculating');
       return;
     }
@@ -127,22 +122,21 @@ export default function OnboardingScreen() {
       proxyQ2Answer === 'Over a month ago'  ? 35 : 14;
     const estimatedStart = toDateOnly(addDays(new Date(), -daysAgo));
     setSelectedDate(estimatedStart);
-    setPeriodDays(5);
-    if (createdPartnerId) addPeriodLog(createdPartnerId, estimatedStart, 5);
+    if (createdPartnerId) logPeriodStart(createdPartnerId, estimatedStart);
     goTo('calculating');
-  }, [proxyQ2Answer, createdPartnerId, addPeriodLog, goTo]);
+  }, [proxyQ2Answer, createdPartnerId, logPeriodStart, goTo]);
 
   const predictions = useMemo(() => {
     if (!createdPartnerId || !selectedDate) return {};
-    const fakeLog = { id: 'temp', partnerId: createdPartnerId, startDate: selectedDate, periodLengthDays: periodDays };
+    const fakeLog = { id: 'temp', partnerId: createdPartnerId, startDate: selectedDate, periodLengthDays: 5, confirmedDays: [selectedDate] };
     return buildPredictedCalendar([fakeLog], createdPartnerId, true, true, true, 7);
-  }, [createdPartnerId, selectedDate, periodDays]);
+  }, [createdPartnerId, selectedDate]);
 
   const todayInfo = useMemo(() => {
     if (!selectedDate || !createdPartnerId) return null;
-    const fakeLog = { id: 'temp', partnerId: createdPartnerId, startDate: selectedDate, periodLengthDays: periodDays };
+    const fakeLog = { id: 'temp', partnerId: createdPartnerId, startDate: selectedDate, periodLengthDays: 5, confirmedDays: [selectedDate] };
     return buildTodayInfo(predictions, [fakeLog]);
-  }, [predictions, selectedDate, periodDays, createdPartnerId]);
+  }, [predictions, selectedDate, createdPartnerId]);
 
   const dateOptions = useMemo(() => {
     const today = new Date();
@@ -166,7 +160,7 @@ export default function OnboardingScreen() {
       case 'security':     return <SecurityScreen onContinue={() => goTo('profile')} />;
       case 'profile':      return <ProfileScreen name={profileName} onNameChange={setProfileName} iconKey={profileIconKey} onIconChange={setProfileIconKey} iconColor={profileIconColor} onIconColorChange={setProfileIconColor} onContinue={handleProfileSave} />;
       case 'periodQuestion': return <PeriodQuestionScreen onYes={() => goTo('periodInput')} onNo={() => goTo('proxyQ1')} />;
-      case 'periodInput':  return <PeriodInputScreen dateOptions={dateOptions} selectedDate={selectedDate} onSelectDate={setSelectedDate} periodDays={periodDays} onSetDays={setPeriodDays} onContinue={(d, n) => handlePeriodLog(d, n)} />;
+      case 'periodInput':  return <PeriodInputScreen dateOptions={dateOptions} selectedDate={selectedDate} onSelectDate={setSelectedDate} onContinue={(d) => handlePeriodLog(d)} />;
       case 'proxyQ1':      return <ProxyQ1Screen answer={proxyQ1Answer} onSelect={setProxyQ1Answer} onContinue={() => goTo('proxyQ2')} />;
       case 'proxyQ2':      return <ProxyQ2Screen answer={proxyQ2Answer} onSelect={setProxyQ2Answer} onContinue={handleProxySubmit} />;
       case 'calculating':  return <CalculatingScreen onDone={() => setStep(isEstimated ? 'proxyResult' : 'whatYouGet')} />;
@@ -483,14 +477,12 @@ function PeriodQuestionScreen({ onYes, onNo }: { onYes: () => void; onNo: () => 
 // SCREEN 7A — DATE KNOWN
 // ─────────────────────────────────────────
 function PeriodInputScreen({
-  dateOptions, selectedDate, onSelectDate, periodDays, onSetDays, onContinue,
+  dateOptions, selectedDate, onSelectDate, onContinue,
 }: {
   dateOptions: { date: string; dayNum: number; weekday: string; month: string }[];
   selectedDate: string | null;
   onSelectDate: (d: string) => void;
-  periodDays: number;
-  onSetDays: (n: number) => void;
-  onContinue: (date: string, days: number) => void;
+  onContinue: (date: string) => void;
 }) {
   const scrollRef = React.useRef<ScrollView>(null);
 
@@ -522,20 +514,9 @@ function PeriodInputScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <Text style={[styles.sectionLabel, { marginTop: 12 }]}>How many days did it last?</Text>
-          <View style={styles.spacerMd} />
-          <View style={styles.stepperRow}>
-            <TouchableOpacity style={styles.stepperBtn} onPress={() => onSetDays(Math.max(1, periodDays - 1))}>
-              <Text style={styles.stepperBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.stepperValue}>{periodDays} days</Text>
-            <TouchableOpacity style={styles.stepperBtn} onPress={() => onSetDays(Math.min(10, periodDays + 1))}>
-              <Text style={styles.stepperBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
         </View>
         <View style={styles.btnZone}>
-          <CTAButton label="See what's coming" onPress={() => selectedDate && onContinue(selectedDate, periodDays)} disabled={!selectedDate} />
+          <CTAButton label="See what's coming" onPress={() => selectedDate && onContinue(selectedDate)} disabled={!selectedDate} />
         </View>
       </View>
     </View>
@@ -1137,16 +1118,6 @@ const styles = StyleSheet.create({
   datePillDay: { fontSize: 22, fontFamily: Fonts.bold, color: 'rgba(255,255,255,0.7)' },
   datePillWeekday: { fontSize: 11, fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
   datePillTextActive: { color: '#FFFFFF' },
-
-  // Stepper (7a duration)
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 28 },
-  stepperBtn: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  stepperBtnText: { fontSize: 24, color: '#FFFFFF', fontFamily: Fonts.medium },
-  stepperValue: { fontSize: 22, fontFamily: Fonts.semiBold, color: '#FFFFFF', minWidth: 90, textAlign: 'center' },
 
   // Duration pills (7b)
   durationPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

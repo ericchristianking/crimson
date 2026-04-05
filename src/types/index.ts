@@ -11,6 +11,7 @@ export type PeriodLog = {
   partnerId: string;
   startDate: string;
   periodLengthDays: number;
+  confirmedDays: string[];
 };
 
 export type PredictedDayState = {
@@ -18,6 +19,7 @@ export type PredictedDayState = {
   isPMS?: boolean;
   isFertileWindow?: boolean;
   isOvulationDay?: boolean;
+  isCurrentCycle?: boolean;
 };
 
 export type EventCategory = 'mood' | 'intimacy' | 'energy' | 'symptom';

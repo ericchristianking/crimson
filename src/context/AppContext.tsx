@@ -26,7 +26,7 @@ type Action =
   | { type: 'DELETE_PARTNER'; payload: string }
   | { type: 'SET_ACTIVE_PARTNER'; payload: string | null }
   | { type: 'ADD_PERIOD_LOG'; payload: PeriodLog }
-  | { type: 'UPDATE_PERIOD_LOG'; payload: { id: string; startDate: string; periodLengthDays: number } }
+  | { type: 'UPDATE_PERIOD_LOG'; payload: { id: string; startDate: string; periodLengthDays: number; confirmedDays: string[] } }
   | { type: 'REMOVE_PERIOD_LOG'; payload: string }
   | { type: 'TOGGLE_PMS' }
   | { type: 'TOGGLE_FERTILITY' }
@@ -40,95 +40,68 @@ type Action =
   | { type: 'CLEAR_DAY_EVENTS'; payload: { partnerId: string; date: string } };
 
 const MIN_CYCLE_GAP_DAYS = 21;
+const DEFAULT_PERIOD_LENGTH = 5;
+const BRIDGE_GAP = 2;
+const MAX_PERIOD_DAYS = 10;
 
-export type AddPeriodResult =
+export type LogPeriodResult =
   | { ok: true }
-  | { ok: true; extended: true }
-  | { ok: false; reason: string }
-  | { ok: false; reason: 'tooClose'; existingLogId: string };
+  | { ok: false; reason: 'tooClose'; existingLogId: string }
+  | { ok: false; reason: string };
 
 function diffInDays(a: Date, b: Date): number {
   const ms = 1000 * 60 * 60 * 24;
   return Math.round((a.getTime() - b.getTime()) / ms);
 }
 
-const AUTO_FILL_GAP = 3;
-
-function checkPeriod(
+function findBridgeCandidate(
   logs: PeriodLog[],
   partnerId: string,
-  startDate: string,
-  days: number,
-): AddPeriodResult {
-  const newStart = parseDate(startDate);
-  const newEnd = addDays(newStart, days - 1);
+  date: string,
+): { log: PeriodLog; side: 'before' | 'after' } | null {
+  const d = parseDate(date);
   const partnerLogs = logs.filter((l) => l.partnerId === partnerId);
 
   for (const log of partnerLogs) {
-    const existingStart = parseDate(log.startDate);
-    const existingEnd = addDays(existingStart, log.periodLengthDays - 1);
+    const start = parseDate(log.startDate);
+    const end = addDays(start, log.periodLengthDays - 1);
 
-    if (newStart >= existingStart && newEnd <= existingEnd) {
-      return { ok: false, reason: 'These days are already logged.' };
+    if (d >= start && d <= end) return null;
+
+    const gapAfter = diffInDays(d, end);
+    if (gapAfter >= 1 && gapAfter <= BRIDGE_GAP) {
+      const newLen = diffInDays(d, start) + 1;
+      if (newLen <= MAX_PERIOD_DAYS) return { log, side: 'after' };
     }
 
-    if (newStart <= existingEnd && newEnd >= existingStart) {
-      return { ok: false, reason: 'This period overlaps with an existing period.' };
-    }
-
-    const gapAfter = diffInDays(newStart, existingEnd);
-    if (gapAfter >= 1 && gapAfter <= AUTO_FILL_GAP) {
-      return { ok: true, extended: true };
-    }
-
-    const gapBefore = diffInDays(existingStart, newEnd);
-    if (gapBefore >= 1 && gapBefore <= AUTO_FILL_GAP) {
-      return { ok: true, extended: true };
-    }
-  }
-
-  for (const log of partnerLogs) {
-    const existingStart = parseDate(log.startDate);
-    const gap = Math.abs(diffInDays(newStart, existingStart));
-    if (gap < MIN_CYCLE_GAP_DAYS) {
-      return { ok: false, reason: 'tooClose', existingLogId: log.id };
-    }
-  }
-
-  return { ok: true };
-}
-
-function findNearbyLog(
-  logs: PeriodLog[],
-  partnerId: string,
-  startDate: string,
-  days: number,
-): { log: PeriodLog; side: 'before' | 'after'; gap: number } | null {
-  const newStart = parseDate(startDate);
-  const newEnd = addDays(newStart, days - 1);
-  const partnerLogs = logs.filter((l) => l.partnerId === partnerId);
-
-  for (const log of partnerLogs) {
-    const existingStart = parseDate(log.startDate);
-    const existingEnd = addDays(existingStart, log.periodLengthDays - 1);
-
-    const gapAfter = diffInDays(newStart, existingEnd);
-    if (gapAfter >= 1 && gapAfter <= AUTO_FILL_GAP) {
-      return { log, side: 'after', gap: gapAfter };
-    }
-
-    const gapBefore = diffInDays(existingStart, newEnd);
-    if (gapBefore >= 1 && gapBefore <= AUTO_FILL_GAP) {
-      return { log, side: 'before', gap: gapBefore };
+    const gapBefore = diffInDays(start, d);
+    if (gapBefore >= 1 && gapBefore <= BRIDGE_GAP) {
+      const newLen = diffInDays(end, d) + 1;
+      if (newLen <= MAX_PERIOD_DAYS) return { log, side: 'before' };
     }
   }
   return null;
 }
 
+function migrateLogs(logs: PeriodLog[]): PeriodLog[] {
+  return logs.map((log) => {
+    if (log.confirmedDays && log.confirmedDays.length > 0) return log;
+    const start = parseDate(log.startDate);
+    const confirmedDays = Array.from({ length: log.periodLengthDays }, (_, i) =>
+      toDateOnly(addDays(start, i)),
+    );
+    return { ...log, confirmedDays };
+  });
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'HYDRATE':
-      return { ...state, ...action.payload };
+      return {
+        ...state,
+        ...action.payload,
+        periodLogs: migrateLogs(action.payload.periodLogs ?? state.periodLogs),
+      };
     case 'ADD_PARTNER':
       return {
         ...state,
@@ -165,7 +138,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         periodLogs: state.periodLogs.map((l) =>
           l.id === action.payload.id
-            ? { ...l, startDate: action.payload.startDate, periodLengthDays: action.payload.periodLengthDays }
+            ? { ...l, startDate: action.payload.startDate, periodLengthDays: action.payload.periodLengthDays, confirmedDays: action.payload.confirmedDays }
             : l,
         ),
       };
@@ -223,10 +196,11 @@ type AppContextValue = AppState & {
   updatePartner: (partner: Partner) => void;
   deletePartner: (id: string) => void;
   setActivePartner: (id: string | null) => void;
-  addPeriodLog: (partnerId: string, startDate: string, days: number) => AddPeriodResult;
-  forceAddPeriodLog: (partnerId: string, startDate: string, days: number, replaceLogId: string) => void;
+  logPeriodStart: (partnerId: string, date: string) => LogPeriodResult;
+  forceReplacePeriod: (partnerId: string, date: string, replaceLogId: string) => void;
+  confirmDay: (logId: string, date: string) => void;
+  removeDayFromPeriod: (logId: string, date: string) => void;
   removePeriodLog: (logId: string) => void;
-  updatePeriodLog: (logId: string, days: number) => void;
   togglePms: () => void;
   toggleFertility: () => void;
   toggleOvulation: () => void;
@@ -279,77 +253,167 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.partners, state.periodLogs, state.cycleEvents, state.appLockEnabled, state.multiProfileEnabled, state.themeMode, state.onboardingComplete]);
 
-  const addPeriodLog = useCallback(
-    (partnerId: string, startDate: string, days: number): AddPeriodResult => {
-      const check = checkPeriod(state.periodLogs, partnerId, startDate, days);
+  const logPeriodStart = useCallback(
+    (partnerId: string, date: string): LogPeriodResult => {
+      const d = parseDate(date);
+      const partnerLogs = state.periodLogs.filter((l) => l.partnerId === partnerId);
 
-      if (!check.ok) return check;
+      for (const log of partnerLogs) {
+        const start = parseDate(log.startDate);
+        const end = addDays(start, log.periodLengthDays - 1);
+        if (d >= start && d <= end) {
+          return { ok: false, reason: 'This day is already part of a period.' };
+        }
+      }
 
-      if ('extended' in check && check.extended) {
-        const nearby = findNearbyLog(state.periodLogs, partnerId, startDate, days);
-        if (nearby) {
-          const { log, side, gap } = nearby;
-          const gapDays = gap - 1;
-          if (side === 'after') {
-            dispatch({
-              type: 'UPDATE_PERIOD_LOG',
-              payload: {
-                id: log.id,
-                startDate: log.startDate,
-                periodLengthDays: log.periodLengthDays + gapDays + days,
-              },
-            });
-          } else {
-            dispatch({
-              type: 'UPDATE_PERIOD_LOG',
-              payload: {
-                id: log.id,
-                startDate,
-                periodLengthDays: days + gapDays + log.periodLengthDays,
-              },
-            });
-          }
-          return { ok: true, extended: true };
+      const bridge = findBridgeCandidate(state.periodLogs, partnerId, date);
+      if (bridge) {
+        const { log, side } = bridge;
+        const logStart = parseDate(log.startDate);
+        const logEnd = addDays(logStart, log.periodLengthDays - 1);
+
+        if (side === 'after') {
+          const newLength = diffInDays(d, logStart) + 1;
+          dispatch({
+            type: 'UPDATE_PERIOD_LOG',
+            payload: {
+              id: log.id,
+              startDate: log.startDate,
+              periodLengthDays: newLength,
+              confirmedDays: [...(log.confirmedDays ?? []), date],
+            },
+          });
+        } else {
+          const newLength = diffInDays(logEnd, d) + 1;
+          dispatch({
+            type: 'UPDATE_PERIOD_LOG',
+            payload: {
+              id: log.id,
+              startDate: date,
+              periodLengthDays: newLength,
+              confirmedDays: [...(log.confirmedDays ?? []), date],
+            },
+          });
+        }
+        return { ok: true };
+      }
+
+      for (const log of partnerLogs) {
+        const existingStart = parseDate(log.startDate);
+        const gap = Math.abs(diffInDays(d, existingStart));
+        if (gap < MIN_CYCLE_GAP_DAYS) {
+          return { ok: false, reason: 'tooClose', existingLogId: log.id };
         }
       }
 
       const id = `log-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       dispatch({
         type: 'ADD_PERIOD_LOG',
-        payload: { id, partnerId, startDate, periodLengthDays: days },
+        payload: {
+          id,
+          partnerId,
+          startDate: date,
+          periodLengthDays: DEFAULT_PERIOD_LENGTH,
+          confirmedDays: [date],
+        },
       });
       return { ok: true };
     },
     [state.periodLogs],
   );
 
-  const forceAddPeriodLog = useCallback(
-    (partnerId: string, startDate: string, days: number, replaceLogId: string) => {
+  const forceReplacePeriod = useCallback(
+    (partnerId: string, date: string, replaceLogId: string) => {
       dispatch({ type: 'REMOVE_PERIOD_LOG', payload: replaceLogId });
       const id = `log-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       dispatch({
         type: 'ADD_PERIOD_LOG',
-        payload: { id, partnerId, startDate, periodLengthDays: days },
+        payload: {
+          id,
+          partnerId,
+          startDate: date,
+          periodLengthDays: DEFAULT_PERIOD_LENGTH,
+          confirmedDays: [date],
+        },
       });
     },
     [],
   );
 
-  const removePeriodLog = useCallback((logId: string) => {
-    dispatch({ type: 'REMOVE_PERIOD_LOG', payload: logId });
-  }, []);
-
-  const updatePeriodLog = useCallback(
-    (logId: string, days: number) => {
+  const confirmDay = useCallback(
+    (logId: string, date: string) => {
       const log = state.periodLogs.find((l) => l.id === logId);
       if (!log) return;
+      if ((log.confirmedDays ?? []).includes(date)) return;
       dispatch({
         type: 'UPDATE_PERIOD_LOG',
-        payload: { id: logId, startDate: log.startDate, periodLengthDays: days },
+        payload: {
+          id: log.id,
+          startDate: log.startDate,
+          periodLengthDays: log.periodLengthDays,
+          confirmedDays: [...(log.confirmedDays ?? []), date],
+        },
       });
     },
     [state.periodLogs],
   );
+
+  const removeDayFromPeriod = useCallback(
+    (logId: string, date: string) => {
+      const log = state.periodLogs.find((l) => l.id === logId);
+      if (!log) return;
+
+      if (log.periodLengthDays <= 1) {
+        dispatch({ type: 'REMOVE_PERIOD_LOG', payload: logId });
+        return;
+      }
+
+      const start = parseDate(log.startDate);
+
+      if (date === log.startDate) {
+        const newStart = toDateOnly(addDays(start, 1));
+        const confirmedDays = (log.confirmedDays ?? []).filter((d) => d !== date);
+        dispatch({
+          type: 'UPDATE_PERIOD_LOG',
+          payload: {
+            id: log.id,
+            startDate: newStart,
+            periodLengthDays: log.periodLengthDays - 1,
+            confirmedDays,
+          },
+        });
+        return;
+      }
+
+      const target = parseDate(date);
+      const newLength = diffInDays(target, start);
+      if (newLength < 1) {
+        dispatch({ type: 'REMOVE_PERIOD_LOG', payload: logId });
+        return;
+      }
+
+      const newEnd = addDays(start, newLength - 1);
+      const confirmedDays = (log.confirmedDays ?? []).filter((d) => {
+        const dd = parseDate(d);
+        return dd >= start && dd <= newEnd;
+      });
+
+      dispatch({
+        type: 'UPDATE_PERIOD_LOG',
+        payload: {
+          id: log.id,
+          startDate: log.startDate,
+          periodLengthDays: newLength,
+          confirmedDays,
+        },
+      });
+    },
+    [state.periodLogs],
+  );
+
+  const removePeriodLog = useCallback((logId: string) => {
+    dispatch({ type: 'REMOVE_PERIOD_LOG', payload: logId });
+  }, []);
 
   const addCycleEvent = useCallback(
     (partnerId: string, date: string, eventType: EventType, category: EventCategory) => {
@@ -400,10 +464,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updatePartner: (p) => dispatch({ type: 'UPDATE_PARTNER', payload: p }),
     deletePartner: (id) => dispatch({ type: 'DELETE_PARTNER', payload: id }),
     setActivePartner: (id) => dispatch({ type: 'SET_ACTIVE_PARTNER', payload: id }),
-    addPeriodLog,
-    forceAddPeriodLog,
+    logPeriodStart,
+    forceReplacePeriod,
+    confirmDay,
+    removeDayFromPeriod,
     removePeriodLog,
-    updatePeriodLog,
     togglePms: () => dispatch({ type: 'TOGGLE_PMS' }),
     toggleFertility: () => dispatch({ type: 'TOGGLE_FERTILITY' }),
     toggleOvulation: () => dispatch({ type: 'TOGGLE_OVULATION' }),

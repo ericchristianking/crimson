@@ -56,10 +56,10 @@ export function buildPredictedCalendar(
   const firstPredStart = addDays(lastStart, avgCycle);
 
   // Mark fertile window & ovulation for the CURRENT cycle (before first predicted period)
-  addFertileOvulationForCycle(result, firstPredStart, showFertility, showOvulation);
+  addFertileOvulationForCycle(result, firstPredStart, showFertility, showOvulation, true);
 
   if (showPms) {
-    addPmsForCycle(result, firstPredStart, pmsDays);
+    addPmsForCycle(result, firstPredStart, pmsDays, true);
   }
 
   let predStart = new Date(firstPredStart);
@@ -92,10 +92,10 @@ function addFertileOvulationForCycle(
   nextPeriodStart: Date,
   showFertility: boolean,
   showOvulation: boolean,
+  currentCycle = false,
 ) {
   if (!showFertility && !showOvulation) return;
 
-  // Ovulation ~14 days before next period start
   const ovuDay = addDays(nextPeriodStart, -14);
   const fertileStart = addDays(ovuDay, -5);
   const fertileEnd = addDays(ovuDay, 1);
@@ -103,6 +103,7 @@ function addFertileOvulationForCycle(
   for (let d = new Date(fertileStart); d <= fertileEnd; d.setDate(d.getDate() + 1)) {
     const str = toDateOnly(d);
     if (!result[str]) result[str] = {};
+    if (currentCycle) result[str].isCurrentCycle = true;
     const isOvu = d.getTime() === ovuDay.getTime();
     if (isOvu && showOvulation) {
       result[str].isOvulationDay = true;
@@ -110,7 +111,6 @@ function addFertileOvulationForCycle(
     if (!isOvu && showFertility) {
       result[str].isFertileWindow = true;
     }
-    // On ovulation day, also mark fertile if fertile toggle is on
     if (isOvu && showFertility && !showOvulation) {
       result[str].isFertileWindow = true;
     }
@@ -121,6 +121,7 @@ function addPmsForCycle(
   result: Record<string, PredictedDayState>,
   periodStart: Date,
   pmsDays: number,
+  currentCycle = false,
 ) {
   const pmsStart = addDays(periodStart, -pmsDays);
   const pmsEnd = addDays(periodStart, -1);
@@ -128,5 +129,6 @@ function addPmsForCycle(
     const str = toDateOnly(d);
     if (!result[str]) result[str] = {};
     result[str].isPMS = true;
+    if (currentCycle) result[str].isCurrentCycle = true;
   }
 }

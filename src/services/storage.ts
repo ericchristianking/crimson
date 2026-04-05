@@ -4,7 +4,7 @@ const KEY = '@crimson_app_state';
 
 export type StoredState = {
   partners: { id: string; name: string; color: string; pmsDays?: number; icon?: string }[];
-  periodLogs: { id: string; partnerId: string; startDate: string; periodLengthDays: number }[];
+  periodLogs: { id: string; partnerId: string; startDate: string; periodLengthDays: number; confirmedDays?: string[] }[];
   cycleEvents?: { id: string; partnerId: string; date: string; eventType: string; category: string; createdAt: number }[];
   appLockEnabled?: boolean;
   multiProfileEnabled?: boolean;

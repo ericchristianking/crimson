@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { PredictedDayState, PeriodLog } from '@/src/types';
 import { CrimsonColors, Fonts } from '@/constants/theme';
-import { addMonths, toDateOnly, parseDate, addDays } from '@/src/utils/date';
+import { toDateOnly, parseDate, addDays } from '@/src/utils/date';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_MARGIN = 20;
@@ -43,36 +43,40 @@ function getFirstDayOffset(y: number, m: number) {
 function weekRowsForMonth(y: number, m: number) {
   return Math.ceil((getDaysInMonth(y, m) + getFirstDayOffset(y, m)) / 7);
 }
-function isLoggedDay(date: string, logs: PeriodLog[]) {
+type LoggedStatus = 'confirmed' | 'autofilled' | false;
+
+function getLoggedStatus(date: string, logs: PeriodLog[]): LoggedStatus {
   const d = parseDate(date);
-  return logs.some((l) => {
+  for (const l of logs) {
     const s = parseDate(l.startDate);
-    return d >= s && d <= addDays(s, l.periodLengthDays - 1);
-  });
+    if (d >= s && d <= addDays(s, l.periodLengthDays - 1)) {
+      return (l.confirmedDays ?? []).includes(date) ? 'confirmed' : 'autofilled';
+    }
+  }
+  return false;
 }
 
 type PhaseColor = { bg: string; text: string } | null;
 
 function getPhaseColor(
-  isPeriod: boolean, isLogged: boolean,
+  isPeriod: boolean, loggedStatus: LoggedStatus,
   isPMS: boolean, isOv: boolean, isFert: boolean,
 ): PhaseColor {
-  if (isLogged || isPeriod) return { bg: CrimsonColors.period,              text: '#fff' };
-  if (isOv)                  return { bg: 'rgba(0,90,255,0.7)',             text: '#fff' };
-  if (isFert)                return { bg: 'rgba(12,136,150,0.7)',            text: '#fff' };
-  if (isPMS)                 return { bg: 'rgba(202,144,60,0.7)',           text: '#fff' };
+  if (loggedStatus || isPeriod) return { bg: CrimsonColors.period, text: '#fff' };
+  if (isOv)   return { bg: 'rgba(0,90,255,0.7)',    text: '#fff' };
+  if (isFert) return { bg: 'rgba(12,136,150,0.7)',   text: '#fff' };
+  if (isPMS)  return { bg: 'rgba(202,144,60,0.7)',   text: '#fff' };
   return null;
 }
 
 function generateMonths(): MonthData[] {
   const now = new Date();
+  const baseMonth = now.getFullYear() * 12 + now.getMonth() - PAST_MONTHS;
   return Array.from({ length: PAST_MONTHS + FUTURE_MONTHS + 1 }, (_, i) => {
-    const d = addMonths(now, i - PAST_MONTHS);
-    return {
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      year: d.getFullYear(),
-      month: d.getMonth(),
-    };
+    const m = baseMonth + i;
+    const year = Math.floor(m / 12);
+    const month = m % 12;
+    return { key: `${year}-${month}`, year, month };
   });
 }
 
@@ -97,26 +101,29 @@ export function CrimsonCalendar({ predictions, logs, eventDates, onDayPress }: P
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     const cells: React.ReactNode[] = Array.from({ length: offset }, (_, i) => (
-      <View key={`e-${i}`} style={styles.dayCell} />
+      <View key={`${year}-${month}-e-${i}`} style={styles.dayCell} />
     ));
 
     for (let day = 1; day <= total; day++) {
       const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const pred     = predictions[ds];
       const isToday  = ds === todayStr;
-      const isLogged = isLoggedDay(ds, logs);
+      const loggedStatus = getLoggedStatus(ds, logs);
       const phase    = getPhaseColor(
-        pred?.isPeriod ?? false, isLogged,
+        pred?.isPeriod ?? false, loggedStatus,
         pred?.isPMS ?? false, pred?.isOvulationDay ?? false, pred?.isFertileWindow ?? false,
       );
 
-      const isFuturePrediction = phase && !isLogged && ds > todayStr;
+      const shouldDim = phase && (
+        loggedStatus === 'autofilled' ||
+        (!loggedStatus && !pred?.isCurrentCycle && ds > todayStr)
+      );
       const hasEvent = eventDates?.has(ds);
 
       cells.push(
         <TouchableOpacity key={ds} style={styles.dayCell} onPress={() => onDayPress(ds)} activeOpacity={0.6}>
           {phase ? (
-            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, isFuturePrediction && { opacity: DIM_OPACITY }]}>
+            <View style={[styles.circle, { backgroundColor: phase.bg }, isToday && styles.todayBorder, shouldDim && { opacity: DIM_OPACITY }]}>
               <Text style={[styles.textPhase, { color: phase.text }]}>{day}</Text>
             </View>
           ) : isToday ? (

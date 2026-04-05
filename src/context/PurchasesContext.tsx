@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 import Purchases, { type CustomerInfo } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
+import Constants from 'expo-constants';
 import { ENTITLEMENT_ID } from '@/src/services/purchases';
+
+const isExpoGo = Constants.appOwnership === 'expo';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export { PAYWALL_RESULT };
@@ -46,8 +49,12 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
   const isPro = resolveIsPro(customerInfo);
 
-  // Initial fetch + live listener
   useEffect(() => {
+    if (isExpoGo) {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     Purchases.getCustomerInfo()
