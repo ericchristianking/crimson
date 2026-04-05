@@ -8,7 +8,6 @@ import {
   Image,
   TextInput,
   ScrollView,
-  Dimensions,
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
@@ -45,8 +44,6 @@ const PHASE_ACCENT: Record<PhaseKey, string> = {
   fertile: CrimsonColors.fertile,
   ovulation: CrimsonColors.ovulation,
 };
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const PRESET_COLORS = ['#F5D69D', '#ED2F17', '#9D0615', '#702887', '#005AFF', '#00AEBF'];
 type Step =
@@ -205,7 +202,12 @@ export default function OnboardingScreen() {
 function HookScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <View style={styles.flexOne}>
-      <View style={styles.centered}>
+      <ScrollView
+        style={styles.stepScroll}
+        contentContainerStyle={[styles.stepScrollContent, styles.hookScrollContent]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.logoWrap}>
           <Image source={CRIMSON_LOGO} style={styles.logo} resizeMode="contain" />
         </View>
@@ -224,8 +226,10 @@ function HookScreen({ onContinue }: { onContinue: () => void }) {
         </View>
         <View style={styles.spacerLg} />
         <Text style={styles.footerLarge}>One cycle. Four phases. Each one changes everything.</Text>
+      </ScrollView>
+      <View style={styles.btnZone}>
+        <CTAButton label="See how" onPress={onContinue} />
       </View>
-      <CTAButton label="See how" onPress={onContinue} />
     </View>
   );
 }
@@ -237,7 +241,12 @@ function PainScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Sound familiar?</Text>
           <View style={styles.spacerLg} />
           <View style={styles.painList}>
@@ -253,7 +262,7 @@ function PainScreen({ onContinue }: { onContinue: () => void }) {
           <Text style={[styles.bodyText, { color: '#FFFFFF', fontFamily: Fonts.semiBold }]}>
             Timing is everything.
           </Text>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Show me how" onPress={onContinue} />
         </View>
@@ -278,7 +287,12 @@ function WhatItIsScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>A daily read on where she's at.</Text>
           <View style={styles.spacerXl} />
           <View style={styles.whatList}>
@@ -287,7 +301,7 @@ function WhatItIsScreen({ onContinue }: { onContinue: () => void }) {
             <WhatRow text="Not a lecture. Not a health tracker." />
             <WhatRow text="Just the intel you actually need." highlight />
           </View>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Continue" onPress={onContinue} />
         </View>
@@ -320,7 +334,12 @@ function UseCaseScreen({
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Who are you tracking?</Text>
           <View style={styles.spacerXl} />
           <TouchableOpacity
@@ -344,7 +363,7 @@ function UseCaseScreen({
             </Text>
             <Text style={styles.optionSub}>More than one — no judgment</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Continue" onPress={onContinue} disabled={!selected} />
         </View>
@@ -360,7 +379,12 @@ function SecurityScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Your eyes only.</Text>
           <View style={styles.spacerMd} />
           <Text style={styles.sub}>
@@ -372,7 +396,7 @@ function SecurityScreen({ onContinue }: { onContinue: () => void }) {
             <FeatureRow icon={<WifiSlashIcon size={22} color="rgba(255,255,255,0.7)" weight="bold" />} text="All data stays on your device — nothing uploaded" />
             <FeatureRow icon={<ShieldCheckIcon size={22} color="rgba(255,255,255,0.7)" weight="bold" />} text="No account required" />
           </View>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Continue" onPress={onContinue} />
         </View>
@@ -404,48 +428,53 @@ function ProfileScreen({
   return (
     <KeyboardAvoidingView style={styles.flexOne} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.screenWrap}>
-      <View style={styles.profileLayout}>
-        <View>
-          <Text style={styles.headline}>Who are you tracking?</Text>
-          <View style={styles.spacerSm} />
-          <Text style={styles.reassuranceLg}>You can edit or add additional at any time.</Text>
-          <View style={styles.spacerMd} />
-          <TextInput
-            style={styles.nameInput}
-            value={name}
-            onChangeText={onNameChange}
-            placeholder="Her name"
-            placeholderTextColor="rgba(255,255,255,0.3)"
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
-          <View style={styles.spacerMd} />
-          <Text style={styles.sectionLabel}>Icon</Text>
-          <View style={styles.spacerSm} />
-          <View style={styles.iconGrid}>
-            {PARTNER_ICONS.slice(0, 12).map((entry) => {
-              const Icon = entry.component;
-              const active = iconKey === entry.key;
-              return (
-                <TouchableOpacity key={entry.key} style={[styles.iconBtn, active && styles.iconBtnActive]} onPress={() => onIconChange(entry.key)}>
-                  <Icon size={24} color={active ? iconColor : 'rgba(255,255,255,0.3)'} weight={active ? 'fill' : 'regular'} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <View style={styles.spacerMd} />
-          <Text style={styles.sectionLabel}>Color</Text>
-          <View style={styles.spacerSm} />
-          <View style={styles.colorRow}>
-            {PRESET_COLORS.map((c) => (
-              <TouchableOpacity key={c} style={[styles.colorBtn, { backgroundColor: c }, iconColor === c && styles.colorBtnActive]} onPress={() => onIconColorChange(c)} />
-            ))}
+        <View style={styles.profileLayout}>
+          <ScrollView
+            style={styles.stepScroll}
+            contentContainerStyle={styles.stepScrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.headline}>Who are you tracking?</Text>
+            <View style={styles.spacerSm} />
+            <Text style={styles.reassuranceLg}>You can edit or add additional at any time.</Text>
+            <View style={styles.spacerMd} />
+            <TextInput
+              style={styles.nameInput}
+              value={name}
+              onChangeText={onNameChange}
+              placeholder="Her name"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+            <View style={styles.spacerMd} />
+            <Text style={styles.sectionLabel}>Icon</Text>
+            <View style={styles.spacerSm} />
+            <View style={styles.iconGrid}>
+              {PARTNER_ICONS.slice(0, 12).map((entry) => {
+                const Icon = entry.component;
+                const active = iconKey === entry.key;
+                return (
+                  <TouchableOpacity key={entry.key} style={[styles.iconBtn, active && styles.iconBtnActive]} onPress={() => onIconChange(entry.key)}>
+                    <Icon size={24} color={active ? iconColor : 'rgba(255,255,255,0.3)'} weight={active ? 'fill' : 'regular'} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.spacerMd} />
+            <Text style={styles.sectionLabel}>Color</Text>
+            <View style={styles.spacerSm} />
+            <View style={styles.colorRow}>
+              {PRESET_COLORS.map((c) => (
+                <TouchableOpacity key={c} style={[styles.colorBtn, { backgroundColor: c }, iconColor === c && styles.colorBtnActive]} onPress={() => onIconColorChange(c)} />
+              ))}
+            </View>
+          </ScrollView>
+          <View style={styles.btnZone}>
+            <CTAButton label="Continue" onPress={onContinue} disabled={!name.trim()} />
           </View>
         </View>
-        <View style={styles.btnZone}>
-          <CTAButton label="Continue" onPress={onContinue} disabled={!name.trim()} />
-        </View>
-      </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -458,12 +487,17 @@ function PeriodQuestionScreen({ onYes, onNo }: { onYes: () => void; onNo: () => 
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Do you know when the last period started?</Text>
           <View style={styles.spacerMd} />
           <Text style={styles.sub}>Even a rough guess helps us predict what's coming.</Text>
-        </View>
-        <View style={[styles.btnZone, { height: 112 }]}>
+        </ScrollView>
+        <View style={[styles.btnZone, styles.btnZoneDouble]}>
           <CTAButton label="Yes, I know" onPress={onYes} />
           <View style={styles.spacerMd} />
           <CTAButton label="Not sure" onPress={onNo} secondary />
@@ -484,22 +518,27 @@ function PeriodInputScreen({
   onSelectDate: (d: string) => void;
   onContinue: (date: string) => void;
 }) {
-  const scrollRef = React.useRef<ScrollView>(null);
+  const dateRowRef = React.useRef<ScrollView>(null);
 
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>When did it start?</Text>
           <View style={styles.spacerSm} />
           <Text style={styles.sub}>Approximate is fine — we'll calibrate over time.</Text>
           <View style={styles.spacerLg} />
           <ScrollView
-            ref={scrollRef}
+            ref={dateRowRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dateScroll}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() => dateRowRef.current?.scrollToEnd({ animated: false })}
           >
             {dateOptions.map((d) => (
               <TouchableOpacity
@@ -514,7 +553,7 @@ function PeriodInputScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="See what's coming" onPress={() => selectedDate && onContinue(selectedDate)} disabled={!selectedDate} />
         </View>
@@ -538,7 +577,12 @@ function ProxyQ1Screen({
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Quick question.</Text>
           <View style={styles.spacerSm} />
           <Text style={styles.sub}>No right answer, just helps us get a read.</Text>
@@ -555,7 +599,7 @@ function ProxyQ1Screen({
               <Text style={[styles.proxyOptionText, answer === opt && styles.proxyOptionTextActive]}>{opt}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Next" onPress={onContinue} disabled={!answer} />
         </View>
@@ -581,7 +625,12 @@ function ProxyQ2Screen({
   return (
     <View style={styles.screenWrap}>
       <View style={styles.screenBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>One more.</Text>
           <View style={styles.spacerLg} />
           <Text style={styles.sub}>Roughly how long ago did her last period start?</Text>
@@ -596,7 +645,7 @@ function ProxyQ2Screen({
               <Text style={[styles.proxyOptionText, answer === opt && styles.proxyOptionTextActive]}>{opt}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Next" onPress={onContinue} disabled={!answer} />
         </View>
@@ -625,7 +674,12 @@ function ProxyResultScreen({
     return (
       <View style={styles.screenWrap}>
         <View style={styles.wygBox}>
-          <View>
+          <ScrollView
+            style={styles.stepScroll}
+            contentContainerStyle={styles.stepScrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.headline}>Got it, you're{'\n'}starting from zero.</Text>
             <View style={styles.spacerSm} />
             <Text style={styles.sub}>Most guys are. Here's how this works.</Text>
@@ -643,7 +697,7 @@ function ProxyResultScreen({
               <View style={styles.divider} />
               <WygRow color={CrimsonColors.pms}       title="PMS window"       teaser="Know when to tread lightly"     locked />
             </View>
-          </View>
+          </ScrollView>
           <View style={styles.btnZone}>
             <CTAButton label="Unlock full access" onPress={onContinue} />
           </View>
@@ -656,7 +710,12 @@ function ProxyResultScreen({
   return (
     <View style={styles.screenWrap}>
       <View style={styles.wygBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Great, that's{'\n'}enough to start.</Text>
           <View style={styles.spacerSm} />
           <Text style={styles.sub}>Log her next period and we'll map out the whole cycle.</Text>
@@ -678,7 +737,7 @@ function ProxyResultScreen({
             <View style={styles.divider} />
             <WygRow color={CrimsonColors.pms}       title="PMS window"       teaser="Know when to tread lightly"     locked />
           </View>
-        </View>
+        </ScrollView>
         <View style={styles.btnZone}>
           <CTAButton label="Unlock full access" onPress={onContinue} />
         </View>
@@ -777,7 +836,12 @@ function WhatYouGetScreen({
   return (
     <View style={styles.screenWrap}>
       <View style={styles.wygBox}>
-        <View>
+        <ScrollView
+          style={styles.stepScroll}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.headline}>Here's what{'\n'}we found</Text>
           <View style={styles.spacerSm} />
           <Text style={styles.sub}>Her cycle, fully mapped out.</Text>
@@ -820,7 +884,7 @@ function WhatYouGetScreen({
               locked
             />
           </View>
-        </View>
+        </ScrollView>
 
         <View style={styles.btnZone}>
           <CTAButton label="Unlock full access" onPress={onContinue} />
@@ -877,16 +941,24 @@ function PaywallScreen({
   }
 
   return (
-    <View style={styles.centered}>
-      <Text style={styles.headline}>Unlock Crimson</Text>
-      <View style={styles.spacerMd} />
-      <Text style={styles.sub}>Full predictions, multiple profiles, and complete calendar access.</Text>
-      <View style={styles.spacerXl} />
-      <CTAButton label={busy ? 'Loading…' : 'Try again'} onPress={showPaywall} disabled={busy} />
-      <View style={styles.spacerMd} />
-      <TouchableOpacity onPress={onSkip} activeOpacity={0.7} disabled={busy}>
-        <Text style={[styles.secondaryLink, { opacity: 0.4, fontSize: 14 }]}>Maybe later</Text>
-      </TouchableOpacity>
+    <View style={styles.flexOne}>
+      <ScrollView
+        style={styles.stepScroll}
+        contentContainerStyle={[styles.stepScrollContent, styles.paywallScrollContent]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.headline}>Unlock Crimson</Text>
+        <View style={styles.spacerMd} />
+        <Text style={styles.sub}>Full predictions, multiple profiles, and complete calendar access.</Text>
+      </ScrollView>
+      <View style={[styles.btnZone, styles.paywallBtnZone]}>
+        <CTAButton label={busy ? 'Loading…' : 'Try again'} onPress={showPaywall} disabled={busy} />
+        <View style={styles.spacerMd} />
+        <TouchableOpacity onPress={onSkip} activeOpacity={0.7} disabled={busy}>
+          <Text style={[styles.secondaryLink, { opacity: 0.4, fontSize: 14 }]}>Maybe later</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -923,12 +995,20 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   bg: { flex: 1 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)' },
-  stepContainer: { flex: 1, paddingTop: 80, paddingBottom: 50, paddingHorizontal: 28 },
+  stepContainer: { flex: 1, paddingTop: 108, paddingBottom: 50, paddingHorizontal: 28 },
   flexOne: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center' },
-  screenWrap: { flex: 1, justifyContent: 'center' },
-  screenBox: { height: 480, justifyContent: 'space-between' },
-  btnZone: { height: 96 },
+  screenWrap: { flex: 1 },
+  screenBox: { flex: 1 },
+  profileLayout: { flex: 1 },
+  wygBox: { flex: 1 },
+  stepScroll: { flex: 1 },
+  stepScrollContent: { flexGrow: 1, paddingBottom: 8 },
+  hookScrollContent: { flexGrow: 1, justifyContent: 'center' },
+  paywallScrollContent: { flexGrow: 1, justifyContent: 'center' },
+  btnZone: { flexShrink: 0, minHeight: 96, justifyContent: 'flex-end', paddingTop: 8 },
+  btnZoneDouble: { minHeight: 112 },
+  paywallBtnZone: { minHeight: 130 },
 
   backBtn: {
     position: 'absolute',
@@ -1082,7 +1162,6 @@ const styles = StyleSheet.create({
   featureText: { fontSize: 16, fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.8)', flex: 1, lineHeight: 22 },
 
   // Profile
-  profileLayout: { height: 540, justifyContent: 'space-between' },
   profileScroll: { paddingTop: 16, paddingBottom: 40 },
   nameInput: {
     borderRadius: 14,
@@ -1155,7 +1234,6 @@ const styles = StyleSheet.create({
   },
 
   // What you get screen (screen 9)
-  wygBox: { height: 560, justifyContent: 'space-between' },
   wygRow: {
     flexDirection: 'row',
     alignItems: 'center',

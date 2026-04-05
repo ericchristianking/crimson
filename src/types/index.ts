@@ -46,3 +46,13 @@ export type PhasePattern = {
   totalDaysInPhase: number;
   percentage: number;
 };
+
+export type CycleDayPattern = {
+  eventType: EventType;
+  cycleDayCenter: number;
+  cycleDayRange: [number, number];
+  cyclesWithEvent: number;
+  totalCycles: number;
+  recurrenceRate: number;
+  phase: 'period' | 'pms' | 'fertile' | 'ovulation' | 'regular';
+};

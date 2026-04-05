@@ -86,11 +86,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     color: '#F5F5F7',
     fontFamily: Fonts.semiBold,
-    lineHeight: 20,
+    lineHeight: 23,
   },
   cardTldr: {
     fontSize: 13,

@@ -19,18 +19,9 @@ import { getIconComponent } from '@/src/constants/partnerIcons';
 export default function SettingsScreen() {
   const router = useRouter();
   const { partners, appLockEnabled, setAppLock, multiProfileEnabled, setMultiProfile, deletePartner, setOnboardingComplete } = useApp();
-  const { isPro, presentPaywall, presentCustomerCenter, restorePurchases } = usePurchases();
+  const { isPro, presentPaywall, presentCustomerCenter } = usePurchases();
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleRestorePurchases = async () => {
-    const info = await restorePurchases();
-    if (info?.entitlements.active['Crimson Pro']) {
-      Alert.alert('Restored', 'Crimson Pro has been restored successfully.');
-    } else {
-      Alert.alert('Nothing to restore', 'No active subscription found for this Apple ID.');
-    }
-  };
 
   const handleTitleTap = () => {
     tapCountRef.current += 1;
@@ -179,11 +170,11 @@ export default function SettingsScreen() {
         {isPro ? (
           <View style={styles.row}>
             <View style={styles.rowTextWrap}>
-              <Text style={styles.rowTitle}>Crimson Pro</Text>
+              <Text style={styles.rowTitle}>Subscription</Text>
               <Text style={styles.rowSubtitle}>Your subscription is active</Text>
             </View>
             <View style={[styles.proBadge]}>
-              <Text style={styles.proBadgeText}>PRO</Text>
+              <Text style={styles.proBadgeText}>Active</Text>
             </View>
           </View>
         ) : (
@@ -193,7 +184,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.rowTextWrap}>
-              <Text style={styles.rowTitle}>Upgrade to Crimson Pro</Text>
+              <Text style={styles.rowTitle}>Subscribe to Crimson</Text>
               <Text style={styles.rowSubtitle}>Unlock full cycle predictions</Text>
             </View>
             <Text style={styles.legalChevron}>›</Text>
@@ -207,14 +198,6 @@ export default function SettingsScreen() {
           <Text style={styles.rowTitle}>Manage Subscription</Text>
           <Text style={styles.legalChevron}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.row}
-          onPress={handleRestorePurchases}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.rowTitle}>Restore Purchases</Text>
-          <Text style={styles.legalChevron}>›</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Legal */}
@@ -222,14 +205,14 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <TouchableOpacity
           style={[styles.row, styles.legalRowBorder]}
-          onPress={() => Linking.openURL('https://goodcompany.com/crimson-privacy')}
+          onPress={() => Linking.openURL('https://www.goodcompany.no/crimson-privacy.html')}
         >
           <Text style={styles.rowTitle}>Privacy Policy</Text>
           <Text style={styles.legalChevron}>›</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.row}
-          onPress={() => Linking.openURL('https://goodcompany.com/crimson-terms')}
+          onPress={() => Linking.openURL('https://www.goodcompany.no/crimson-terms.html')}
         >
           <Text style={styles.rowTitle}>Terms of Service</Text>
           <Text style={styles.legalChevron}>›</Text>

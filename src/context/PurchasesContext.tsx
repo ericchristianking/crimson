@@ -16,14 +16,14 @@ const isExpoGo = Constants.appOwnership === 'expo';
 export { PAYWALL_RESULT };
 
 type PurchasesContextValue = {
-  /** True when the user has an active "Crimson Pro" entitlement */
+  /** True when the user has an active subscription */
   isPro: boolean;
   /** True while the initial customer info fetch is in flight */
   isLoading: boolean;
   customerInfo: CustomerInfo | null;
   /** Present the RC paywall unconditionally */
   presentPaywall: () => Promise<PAYWALL_RESULT>;
-  /** Present the RC paywall only if the user does NOT have Crimson Pro */
+  /** Present the RC paywall only if the user does NOT have an active subscription */
   presentPaywallIfNeeded: () => Promise<PAYWALL_RESULT>;
   /** Open the RC Customer Center (manage / cancel / restore from within app) */
   presentCustomerCenter: () => Promise<void>;
@@ -149,7 +149,7 @@ export function usePurchases(): PurchasesContextValue {
   return ctx;
 }
 
-/** Convenience hook — returns true when the user has Crimson Pro */
+/** Convenience hook — returns true when the user has an active subscription */
 export function useIsPro(): boolean {
   return usePurchases().isPro;
 }

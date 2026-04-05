@@ -3,7 +3,13 @@ import { View, Text, Image, ImageBackground, StyleSheet, ScrollView, TouchableOp
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
 import { buildPredictedCalendar } from '@/src/services/cyclePrediction';
-import { buildPatterns, getTopInsights, countCompleteCycles } from '@/src/services/patternAnalysis';
+import {
+  detectRecurringPatterns,
+  getCurrentCycleDay,
+  getNearbyPredictions,
+  formatPrediction,
+  countCompleteCycles,
+} from '@/src/services/cycleDayPatterns';
 import { PartnerSwitcher } from '@/src/components/PartnerSwitcher';
 import { LogEventModal } from '@/src/components/LogEventModal';
 import { buildTodayInfo } from '@/src/utils/todayInfo';
@@ -71,12 +77,25 @@ export default function HomeScreen() {
     [periodLogs, activePartnerId],
   );
 
-  const patterns = useMemo(
-    () => (activePartnerId ? buildPatterns(cycleEvents, predictions, periodLogs, activePartnerId) : []),
-    [cycleEvents, predictions, periodLogs, activePartnerId],
+  const recurringPatterns = useMemo(
+    () => (activePartnerId ? detectRecurringPatterns(cycleEvents, periodLogs, activePartnerId) : []),
+    [cycleEvents, periodLogs, activePartnerId],
   );
 
-  const insights = useMemo(() => getTopInsights(patterns), [patterns]);
+  const currentCycleDay = useMemo(
+    () => (activePartnerId ? getCurrentCycleDay(periodLogs, activePartnerId) : null),
+    [periodLogs, activePartnerId],
+  );
+
+  const nearbyPredictions = useMemo(
+    () => (currentCycleDay != null ? getNearbyPredictions(recurringPatterns, currentCycleDay) : []),
+    [recurringPatterns, currentCycleDay],
+  );
+
+  const predictionLines = useMemo(
+    () => nearbyPredictions.map(formatPrediction),
+    [nearbyPredictions],
+  );
 
   const todayStr = useMemo(() => toDateOnly(new Date()), []);
 
@@ -153,62 +172,45 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Card 4 – Daily Log / Cycle Patterns */}
+          {/* Card 4 – Cycle Patterns */}
           <View style={styles.card}>
             {partnerEvents.length === 0 ? (
               <>
-                <Text style={styles.cardLabel}>Daily Log</Text>
+                <Text style={styles.cardLabel}>Daily Insights</Text>
                 <Text style={styles.patternHint}>
                   Track moods & events to discover patterns in her cycle.
                 </Text>
-                <TouchableOpacity
-                  style={styles.logTodayBtn}
-                  onPress={() => setShowEventModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.logTodayText}>Log Today</Text>
-                </TouchableOpacity>
               </>
-            ) : completeCycles < 3 || insights.length === 0 ? (
+            ) : completeCycles < 2 ? (
               <>
-                <Text style={styles.cardLabel}>Daily Log</Text>
+                <Text style={styles.cardLabel}>Daily Insights</Text>
                 <Text style={styles.patternStats}>
                   {partnerEvents.length} event{partnerEvents.length !== 1 ? 's' : ''} logged
-                  {completeCycles > 0
-                    ? ` across ${completeCycles} cycle${completeCycles !== 1 ? 's' : ''}`
-                    : ''}
                 </Text>
                 <Text style={styles.patternHint}>
-                  {completeCycles < 3
-                    ? 'Patterns unlock after 3 cycles. Keep logging!'
-                    : 'Keep logging to strengthen patterns.'}
+                  Patterns unlock after 2 cycles.
                 </Text>
-                <TouchableOpacity
-                  style={styles.logTodayBtn}
-                  onPress={() => setShowEventModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.logTodayText}>Log Today</Text>
-                </TouchableOpacity>
+              </>
+            ) : predictionLines.length > 0 ? (
+              <>
+                <Text style={styles.cardLabel}>Cycle Patterns</Text>
+                {predictionLines.map((line, i) => (
+                  <Text key={i} style={styles.insightLine}>{line}</Text>
+                ))}
               </>
             ) : (
               <>
                 <Text style={styles.cardLabel}>Cycle Patterns</Text>
-                {insights.map((insight, i) => (
-                  <Text key={i} style={styles.insightLine}>{insight}</Text>
-                ))}
-                <Text style={styles.patternFooter}>
-                  Based on {partnerEvents.length} events over {completeCycles} cycle{completeCycles !== 1 ? 's' : ''}
-                </Text>
-                <TouchableOpacity
-                  style={styles.logTodayBtn}
-                  onPress={() => setShowEventModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.logTodayText}>Log Today</Text>
-                </TouchableOpacity>
+                <Text style={styles.patternHint}>Nothing notable right now</Text>
               </>
             )}
+            <TouchableOpacity
+              style={styles.logTodayBtn}
+              onPress={() => setShowEventModal(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.logTodayText}>Log Today</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -309,12 +311,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     marginTop: 6,
     lineHeight: 22,
-  },
-  patternFooter: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    fontFamily: Fonts.regular,
-    marginTop: 12,
   },
   logTodayBtn: {
     paddingVertical: 10,

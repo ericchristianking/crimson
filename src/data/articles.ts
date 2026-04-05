@@ -401,7 +401,7 @@ export const ARTICLES: Article[] = [
     slug: 'pmdd',
     title: 'PMDD: When PMS Goes Nuclear',
     tldr: "PMDD is PMS's severe version. Same timing, but the symptoms are intense enough to seriously disrupt daily life. It's a real medical condition, not just \"bad PMS.\"",
-    color: '#B03080',
+    color: CrimsonColors.pms,
     image: require('@/assets/images/bg-period.jpg'),
     sections: [
       {

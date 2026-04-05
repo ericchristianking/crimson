@@ -166,16 +166,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   tldrText: {
-    fontSize: 15,
+    fontSize: 16,
     color: 'rgba(255,255,255,0.75)',
     fontFamily: Fonts.regular,
-    lineHeight: 23,
+    lineHeight: 25,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#F5F5F7',
     fontFamily: Fonts.semiBold,
@@ -188,10 +188,10 @@ const styles = StyleSheet.create({
     color: '#E85A5F',
   },
   para: {
-    fontSize: 15,
+    fontSize: 16,
     color: 'rgba(255,255,255,0.75)',
     fontFamily: Fonts.regular,
-    lineHeight: 24,
+    lineHeight: 26,
     marginBottom: 8,
   },
   list: {
@@ -204,16 +204,16 @@ const styles = StyleSheet.create({
   },
   bullet: {
     color: 'rgba(255,255,255,0.3)',
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 26,
     width: 12,
   },
   listText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: 'rgba(255,255,255,0.75)',
     fontFamily: Fonts.regular,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   bottomSpacer: {
     height: 40,
